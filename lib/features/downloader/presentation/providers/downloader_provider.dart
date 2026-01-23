@@ -5,6 +5,7 @@ import '../../domain/entities/download_request.dart';
 import '../../domain/enums/download_status.dart';
 import '../../domain/repositories/i_downloader_repository.dart';
 import '../../data/sources/yt_dlp_source.dart';
+import '../../data/sources/hitomi_source.dart';
 import '../../data/repositories/downloader_repository_impl.dart';
 import '../../../../../services/service_providers.dart';
 
@@ -16,8 +17,15 @@ final ytDlpSourceProvider = Provider<YtDlpSource>((ref) {
   );
 });
 
+final hitomiSourceProvider = Provider<HitomiSource>((ref) {
+  return HitomiSource(ref.read(binaryLocatorProvider));
+});
+
 final downloaderRepositoryProvider = Provider<IDownloaderRepository>((ref) {
-  return DownloaderRepositoryImpl(ref.read(ytDlpSourceProvider));
+  return DownloaderRepositoryImpl(
+    ref.read(ytDlpSourceProvider),
+    ref.read(hitomiSourceProvider),
+  );
 });
 
 // Presentation Layer - Controller
