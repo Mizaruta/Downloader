@@ -2,32 +2,29 @@ import 'dart:developer' as developer;
 
 class LoggerService {
   static void i(String message, [String? name]) {
-    final formatted = 'ℹ️ [${name ?? 'INFO'}] $message';
-    print(formatted); // Console output
-    developer.log(formatted, name: name ?? 'INFO');
+    // print('ℹ️ [${name ?? 'INFO'}] $message');
+    developer.log(message, name: name ?? 'INFO', level: 800);
   }
 
   static void w(String message, [String? name]) {
-    final formatted = '⚠️ [${name ?? 'WARN'}] $message';
-    print(formatted); // Console output
-    developer.log(formatted, name: name ?? 'WARN');
+    // print('⚠️ [${name ?? 'WARN'}] $message');
+    developer.log(message, name: name ?? 'WARN', level: 900);
   }
 
   static void e(String message, [Object? error, StackTrace? stackTrace]) {
-    final formatted = '❌ [ERROR] $message ${error != null ? '| $error' : ''}';
-    print(formatted); // Console output
-    if (stackTrace != null) print(stackTrace);
+    // print('❌ [ERROR] $message');
+    // if (stackTrace != null) print(stackTrace);
     developer.log(
-      formatted,
+      message,
       name: 'ERROR',
       error: error,
       stackTrace: stackTrace,
+      level: 1000,
     );
   }
 
   static void debug(String message) {
-    final formatted = '🐞 [DEBUG] $message';
-    print(formatted); // Console output
-    developer.log(formatted, name: 'DEBUG');
+    // print('🐞 [DEBUG] $message');
+    developer.log(message, name: 'DEBUG', level: 500);
   }
 }

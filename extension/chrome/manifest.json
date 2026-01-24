@@ -1,0 +1,16 @@
+{
+    "manifest_version": 3,
+    "name": "Modern Downloader Integration",
+    "version": "1.0",
+    "description": "Send links to Modern Downloader via context menu.",
+    "permissions": [
+        "contextMenus",
+        "activeTab"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "action": {
+        "default_title": "Send to Downloader"
+    }
+}

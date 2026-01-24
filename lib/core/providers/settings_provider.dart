@@ -21,7 +21,10 @@ class AppSettings {
   final String cookiesFilePath; // Path to cookies.txt for protected sites
   final bool useTorProxy; // Use Tor SOCKS5 proxy (127.0.0.1:9050)
 
+  final String themeMode; // 'system', 'light', 'dark'
+
   const AppSettings({
+    this.themeMode = 'system',
     this.audioOnly = false,
     this.autoStart = true,
     this.maxConcurrent = 3,
@@ -40,6 +43,7 @@ class AppSettings {
   });
 
   AppSettings copyWith({
+    String? themeMode,
     bool? audioOnly,
     bool? autoStart,
     int? maxConcurrent,
@@ -57,6 +61,7 @@ class AppSettings {
     bool? useTorProxy,
   }) {
     return AppSettings(
+      themeMode: themeMode ?? this.themeMode,
       audioOnly: audioOnly ?? this.audioOnly,
       autoStart: autoStart ?? this.autoStart,
       maxConcurrent: maxConcurrent ?? this.maxConcurrent,
@@ -78,6 +83,7 @@ class AppSettings {
 }
 
 // Keys
+const _kThemeMode = 'theme_mode';
 const _kAudioOnly = 'audio_only';
 const _kAutoStart = 'auto_start';
 const _kMaxConcurrent = 'max_concurrent';
@@ -118,6 +124,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
 
   void _loadFromPrefs() {
     state = AppSettings(
+      themeMode: prefs.getString(_kThemeMode) ?? 'system',
       audioOnly: prefs.getBool(_kAudioOnly) ?? false,
       autoStart: prefs.getBool(_kAutoStart) ?? true,
       maxConcurrent: prefs.getInt(_kMaxConcurrent) ?? 3,
@@ -134,6 +141,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       cookiesFilePath: prefs.getString(_kCookiesFilePath) ?? '',
       useTorProxy: prefs.getBool(_kUseTorProxy) ?? false,
     );
+  }
+
+  void setThemeMode(String value) {
+    state = state.copyWith(themeMode: value);
+    prefs.setString(_kThemeMode, value);
   }
 
   void setAudioOnly(bool value) {
@@ -209,6 +221,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   void setUseTorProxy(bool value) {
     state = state.copyWith(useTorProxy: value);
     prefs.setBool(_kUseTorProxy, value);
+  }
+
+  void clearCookies() {
+    state = state.copyWith(cookiesFilePath: '');
+    prefs.remove(_kCookiesFilePath);
   }
 }
 

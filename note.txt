@@ -1,32 +1,39 @@
-[ERROR:flutter/runtime/dart_vm_initializer.cc(40)] Unhandled Exception: type 'Null' is not a subtype of type 'SharedPreferences' of 'function result'
-#0      SettingsNotifier._prefs (package:modern_downloader/core/providers/settings_provider.dart)
-#1      SettingsNotifier.setOutputFolder (package:modern_downloader/core/providers/settings_provider.dart:118:5)
-#2      _SettingsViewState._pickOutputFolder (package:modern_downloader/core/ui/settings_view.dart:782:16)
-<asynchronous suspension>
+🚀 Roadmap Suggestions
 
-Cette erreur arrivge QUAND JE SELECTIONNE UN DOSSIER DE TELECHARGEMENT OUTPUT DANS LES SETTINGS
+Critical (Immediate Value)
 
-Handler: "onUpdate"
-Recognizer:
-  HorizontalDragGestureRecognizer#12b4e
-════════════════════════════════════════════════════════════════════════════════════════════════════
+Error Handling: Enhance yt-dlp error parsing. Currently, we catch generic errors. Parsing "Video unavailable" vs "Network error" vs "Geo-blocked" would be huge for UX.
+Update Mechanism: yt-dlp updates frequently. An "Auto-update Binaries" button in Settings is essential to keep downloads working long-term.
 
-Another exception was thrown: type 'Null' is not a subtype of type 'SharedPreferences' of 'function result'
-[ERROR:flutter/runtime/dart_vm_initializer.cc(40)] Unhandled Exception: type 'Null' is not a subtype of type 'SharedPreferences' of 'function result'
-#0      SettingsNotifier._prefs (package:modern_downloader/core/providers/settings_provider.dart)
-#1      SettingsNotifier.setPreferredQuality (package:modern_downloader/core/providers/settings_provider.dart:123:5)
-#2      _SettingsViewState._buildDropdownTile.<anonymous closure> (package:modern_downloader/core/ui/settings_view.dart:633:42)
-#3      _DropdownButtonState._handleTap.<anonymous closure> (package:flutter/src/material/dropdown.dart:1472:25)
-#4      Future._propagateToListeners.handleValueCallback (dart:async/future_impl.dart:948:45)
-#5      Future._propagateToListeners (dart:async/future_impl.dart:977:13)
-#6      Future._completeWithValue (dart:async/future_impl.dart:720:5)
-#7      Future._asyncCompleteWithValue.<anonymous closure> (dart:async/future_impl.dart:804:7)
-#8      _microtaskLoop (dart:async/schedule_microtask.dart:40:35)
-#9      _startMicrotaskLoop (dart:async/schedule_microtask.dart:49:5)
 
-Another exception was thrown: type 'Null' is not a subtype of type 'SharedPreferences' of 'function result'
-Another exception was thrown: type 'Null' is not a subtype of type 'SharedPreferences' of 'function result'
-Another exception was thrown: type 'Null' is not a subtype of type 'SharedPreferences' of 'function result'
-Another exception was thrown: type 'Null' is not a subtype of type 'SharedPreferences' of 'function result'
 
-Tout les boutons des pareametre renvoie des erreurs
+
+
+
+
+
+Important (Core Experience)
+
+Collections/Playlists: Support downloading entire YouTube playlists or channels in one go.
+Metadata Editor: Allow users to edit ID3 tags (Artist, Album, Cover Art) before/after download.
+Queue Management: Reordering downloads and "Download Later" scheduling.
+
+
+
+
+
+
+
+Medium (Nice to Have)
+
+Browser Extension: A Chrome/Edge extension to "Send to Downloader" directly.
+FFmpeg Filters: UI for basic video editing (Trim, Convert format post-download, Volume boost).
+Mobile Companion: A simple specific remote to queue downloads from phone to PC.
+The app is now polished, documented, and ready for use! (Build is relaunching to show the new window controls).
+
+
+
+
+Metadata Editor: Allow users to edit ID3 tags (Artist, Album, Cover Art) before/after download.
+Queue Management: Reordering downloads and "Download Later" scheduling.
+Browser Extension: A Chrome/Edge extension to "Send to Downloader" directly.

@@ -3,6 +3,7 @@ import 'package:gap/gap.dart';
 import 'package:modern_downloader/theme/ios_theme.dart';
 import 'package:modern_downloader/core/ui/blur_container.dart';
 import '../../domain/entities/download_item.dart';
+import '../../domain/enums/download_status.dart';
 import 'progress_bar.dart';
 
 class DownloadCard extends StatelessWidget {
@@ -64,6 +65,25 @@ class DownloadCard extends StatelessWidget {
                             IOSTheme.systemGreen,
                           ),
                           const Gap(8),
+                          // Show step if no size info available (during extraction/merging)
+                          if (item.step.isNotEmpty && item.totalSize.isEmpty)
+                            Text(
+                              item.step,
+                              style: IOSTheme.textTheme.labelSmall?.copyWith(
+                                color: IOSTheme.systemBlue,
+                              ),
+                            ),
+                          // Show downloaded/total size if available
+                          if (item.totalSize.isNotEmpty)
+                            Text(
+                              item.downloadedSize.isNotEmpty
+                                  ? '${item.downloadedSize}/${item.totalSize}'
+                                  : item.totalSize,
+                              style: IOSTheme.textTheme.labelSmall,
+                            ),
+                          if (item.totalSize.isNotEmpty &&
+                              item.speed.isNotEmpty)
+                            const Gap(6),
                           Text(
                             item.speed.isNotEmpty ? item.speed : '',
                             style: IOSTheme.textTheme.labelSmall,
@@ -82,8 +102,8 @@ class DownloadCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Action
-                if (onCancel != null)
+                // Action - only show for active downloads
+                if (onCancel != null && _isActive(item))
                   _buildActionButton(
                     icon: Icons.close_rounded,
                     onTap: onCancel!,
@@ -135,5 +155,11 @@ class DownloadCard extends StatelessWidget {
         child: Icon(icon, size: 16, color: IOSTheme.label),
       ),
     );
+  }
+
+  bool _isActive(DownloadItem item) {
+    return item.status == DownloadStatus.queued ||
+        item.status == DownloadStatus.extracting ||
+        item.status == DownloadStatus.downloading;
   }
 }

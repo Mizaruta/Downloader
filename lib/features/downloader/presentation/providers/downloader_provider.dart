@@ -5,9 +5,10 @@ import '../../domain/entities/download_request.dart';
 import '../../domain/enums/download_status.dart';
 import '../../domain/repositories/i_downloader_repository.dart';
 import '../../data/sources/yt_dlp_source.dart';
-import '../../data/sources/hitomi_source.dart';
+import '../../data/sources/gallery_dl_source.dart';
+import '../../data/datasources/persistence_service.dart';
 import '../../data/repositories/downloader_repository_impl.dart';
-import '../../../../../services/service_providers.dart';
+import 'package:modern_downloader/services/service_providers.dart';
 
 // Data Layer Providers
 final ytDlpSourceProvider = Provider<YtDlpSource>((ref) {
@@ -17,14 +18,20 @@ final ytDlpSourceProvider = Provider<YtDlpSource>((ref) {
   );
 });
 
-final hitomiSourceProvider = Provider<HitomiSource>((ref) {
-  return HitomiSource(ref.read(binaryLocatorProvider));
+final galleryDlSourceProvider = Provider<GalleryDlSource>((ref) {
+  return GalleryDlSource(ref.read(binaryLocatorProvider));
+});
+
+// Added persistenceServiceProvider
+final persistenceServiceProvider = Provider<PersistenceService>((ref) {
+  return PersistenceService();
 });
 
 final downloaderRepositoryProvider = Provider<IDownloaderRepository>((ref) {
   return DownloaderRepositoryImpl(
     ref.read(ytDlpSourceProvider),
-    ref.read(hitomiSourceProvider),
+    ref.read(galleryDlSourceProvider),
+    ref.read(persistenceServiceProvider), // Updated injection
   );
 });
 
@@ -35,32 +42,67 @@ final activeDownloadsProvider = StreamProvider<DownloadItem>((ref) {
 });
 
 // Notifier to hold the list state
-class DownloadListNotifier extends StateNotifier<List<DownloadItem>> {
+class DownloadListNotifier
+    extends StateNotifier<AsyncValue<List<DownloadItem>>> {
   final IDownloaderRepository _repository;
   final Ref _ref;
 
   static const int _maxConcurrentDownloads = 3;
   final List<DownloadRequest> _queue = [];
 
-  DownloadListNotifier(this._repository, this._ref) : super([]) {
+  DownloadListNotifier(this._repository, this._ref)
+    : super(const AsyncValue.loading()) {
+    _init();
+  }
+
+  Future<void> _init() async {
+    // Simulate loading for better UX (Skeleton demonstration) or valid async load
+    await Future.delayed(const Duration(milliseconds: 600));
+    try {
+      final items = _repository.getCurrentDownloads();
+      state = AsyncValue.data(items);
+      _listenToUpdates();
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  void _listenToUpdates() {
     _repository.downloadUpdateStream.listen((item) {
       if (!mounted) return;
 
-      final oldState = state;
-      state = [
-        for (final exist in oldState)
-          if (exist.id == item.id) item else exist,
-      ];
-      if (!oldState.any((e) => e.id == item.id)) {
-        state = [...oldState, item];
-      }
+      state.whenData((currentList) {
+        bool found = false;
+        final newState = currentList.map((e) {
+          if (e.id == item.id) {
+            found = true;
+            return item;
+          }
+          return e;
+        }).toList();
 
-      if (item.status == DownloadStatus.completed ||
-          item.status == DownloadStatus.failed ||
-          item.status == DownloadStatus.canceled) {
-        _processQueue();
-      }
+        if (!found) {
+          newState.add(item);
+        }
+
+        state = AsyncValue.data(newState);
+
+        if (item.status == DownloadStatus.completed ||
+            item.status == DownloadStatus.failed ||
+            item.status == DownloadStatus.canceled) {
+          _processQueue();
+        }
+      });
     });
+  }
+
+  void refreshList() {
+    try {
+      final items = _repository.getCurrentDownloads();
+      state = AsyncValue.data(items);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
   }
 
   Future<void> startDownload(String url) async {
@@ -90,8 +132,36 @@ class DownloadListNotifier extends StateNotifier<List<DownloadItem>> {
     await _processQueue();
   }
 
+  Future<void> deleteDownload(String id) async {
+    await _repository.deleteDownload(id);
+    state.whenData((currentList) {
+      final newState = currentList.where((item) => item.id != id).toList();
+      state = AsyncValue.data(newState);
+    });
+  }
+
+  Future<void> reorder(int oldIndex, int newIndex) async {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+
+    state.whenData((currentList) async {
+      final items = List<DownloadItem>.from(currentList);
+      final item = items.removeAt(oldIndex);
+      items.insert(newIndex, item);
+      state = AsyncValue.data(items);
+
+      await _repository.reorderDownloads(oldIndex, newIndex);
+    });
+  }
+
+  Future<void> cancelDownload(String id) async {
+    await _repository.cancelDownload(id);
+  }
+
   Future<void> _processQueue() async {
-    final activeCount = state
+    final currentList = state.valueOrNull ?? [];
+    final activeCount = currentList
         .where(
           (i) =>
               i.status == DownloadStatus.downloading ||
@@ -108,6 +178,11 @@ class DownloadListNotifier extends StateNotifier<List<DownloadItem>> {
 }
 
 final downloadListProvider =
-    StateNotifierProvider<DownloadListNotifier, List<DownloadItem>>((ref) {
-      return DownloadListNotifier(ref.read(downloaderRepositoryProvider), ref);
-    });
+    StateNotifierProvider<DownloadListNotifier, AsyncValue<List<DownloadItem>>>(
+      (ref) {
+        return DownloadListNotifier(
+          ref.read(downloaderRepositoryProvider),
+          ref,
+        );
+      },
+    );

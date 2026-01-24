@@ -1,23 +1,35 @@
 import 'dart:io';
 import '../core/logger/logger_service.dart';
+import 'binary_locator.dart';
 
 class BinaryVerifier {
+  static final _locator = BinaryLocator();
+
   /// Checks if yt-dlp is installed and returns version info
   static Future<BinaryStatus> checkYtDlp() async {
-    return _checkBinary('yt-dlp', ['--version']);
+    final path = await _locator.findYtDlp() ?? 'yt-dlp';
+    return _checkBinary(path, ['--version']);
   }
 
   /// Checks if ffmpeg is installed and returns version info
   static Future<BinaryStatus> checkFfmpeg() async {
-    return _checkBinary('ffmpeg', ['-version']);
+    final path = await _locator.findFfmpeg() ?? 'ffmpeg';
+    return _checkBinary(path, ['-version']);
+  }
+
+  /// Checks if aria2c is installed and returns version info
+  static Future<BinaryStatus> checkAria2c() async {
+    final path = await _locator.findAria2c() ?? 'aria2c';
+    return _checkBinary(path, ['--version']);
   }
 
   static Future<BinaryStatus> _checkBinary(
-    String name,
+    String path,
     List<String> args,
   ) async {
+    final name = path.split(Platform.pathSeparator).last;
     try {
-      final result = await Process.run(name, args, runInShell: true);
+      final result = await Process.run(path, args, runInShell: true);
       if (result.exitCode == 0) {
         final output = result.stdout.toString().trim();
         // Extract first line for version

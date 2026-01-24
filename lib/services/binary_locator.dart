@@ -4,14 +4,14 @@ import '../core/logger/logger_service.dart';
 class BinaryLocator {
   static const String ytDlpName = 'yt-dlp';
   static const String ffmpegName = 'ffmpeg';
-  static const String hitomiName = 'Hitomi Downloader';
+  static const String galleryDlName = 'gallery-dl';
 
   // Custom paths can be set from settings
-  String? _customHitomiPath;
+  String? _customGalleryDlPath;
 
-  void setHitomiPath(String? path) {
-    _customHitomiPath = path;
-    LoggerService.i('Hitomi path set to: $path');
+  void setGalleryDlPath(String? path) {
+    _customGalleryDlPath = path;
+    LoggerService.i('gallery-dl path set to: $path');
   }
 
   Future<String?> findYtDlp() async {
@@ -22,77 +22,117 @@ class BinaryLocator {
     return _findBinary(ffmpegName);
   }
 
-  /// Find Hitomi-Downloader executable
-  /// Checks custom path first, then common locations
-  Future<String?> findHitomi() async {
+  Future<String?> findAria2c() async {
+    return _findBinary('aria2c');
+  }
+
+  /// Find gallery-dl executable
+  /// Checks custom path first, then PATH, then common pip locations
+  Future<String?> findGalleryDl() async {
     // 1. Try custom path if set
-    if (_customHitomiPath != null && _customHitomiPath!.isNotEmpty) {
-      final file = File(_customHitomiPath!);
+    if (_customGalleryDlPath != null && _customGalleryDlPath!.isNotEmpty) {
+      final file = File(_customGalleryDlPath!);
       if (await file.exists()) {
-        LoggerService.i('Found Hitomi at custom path: $_customHitomiPath');
-        return _customHitomiPath;
+        LoggerService.i(
+          'Found gallery-dl at custom path: $_customGalleryDlPath',
+        );
+        return _customGalleryDlPath;
       }
     }
 
-    // 2. Try common locations on Windows
-    final commonPaths = [
-      r'C:\Program Files\Hitomi Downloader\Hitomi Downloader.exe',
-      r'C:\Program Files (x86)\Hitomi Downloader\Hitomi Downloader.exe',
-      'Hitomi Downloader.exe', // Current directory
-    ];
+    // 2. Try via PATH (pip install --user adds to Scripts)
+    try {
+      final result = await Process.run(galleryDlName, [
+        '--version',
+      ], runInShell: true);
+      if (result.exitCode == 0) {
+        LoggerService.i('Found gallery-dl in PATH');
+        return galleryDlName;
+      }
+    } catch (e) {
+      LoggerService.w('gallery-dl not in PATH: $e');
+    }
 
-    // Also check user's Downloads folder
+    // 3. Try common pip install locations on Windows
     final userProfile = Platform.environment['USERPROFILE'];
     if (userProfile != null) {
-      commonPaths.add('$userProfile\\Downloads\\Hitomi Downloader.exe');
-      commonPaths.add('$userProfile\\Desktop\\Hitomi Downloader.exe');
-    }
+      final commonPaths = [
+        '$userProfile\\AppData\\Local\\Programs\\Python\\Python314\\Scripts\\gallery-dl.exe',
+        '$userProfile\\AppData\\Local\\Programs\\Python\\Python311\\Scripts\\gallery-dl.exe',
+        '$userProfile\\AppData\\Local\\Programs\\Python\\Python310\\Scripts\\gallery-dl.exe',
+        '$userProfile\\AppData\\Local\\Programs\\Python\\Python39\\Scripts\\gallery-dl.exe',
+        '$userProfile\\AppData\\Roaming\\Python\\Python314\\Scripts\\gallery-dl.exe',
+        '$userProfile\\AppData\\Roaming\\Python\\Python311\\Scripts\\gallery-dl.exe',
+        '$userProfile\\AppData\\Roaming\\Python\\Python310\\Scripts\\gallery-dl.exe',
+      ];
 
-    for (final path in commonPaths) {
-      final file = File(path);
-      if (await file.exists()) {
-        LoggerService.i('Found Hitomi at: $path');
-        return path;
+      for (final path in commonPaths) {
+        final file = File(path);
+        if (await file.exists()) {
+          LoggerService.i('Found gallery-dl at: $path');
+          return path;
+        }
       }
     }
 
-    LoggerService.w('Hitomi Downloader not found');
+    LoggerService.w('gallery-dl not found');
     return null;
   }
 
   Future<String?> _findBinary(String binaryName) async {
-    // On Windows, just return the name and let the shell resolve it from PATH
-    // when we run with runInShell: true
-    if (Platform.isWindows) {
-      // Test if it's available
-      try {
-        final result = await Process.run(binaryName, [
-          '--version',
-        ], runInShell: true);
-        if (result.exitCode == 0) {
-          LoggerService.i('Found $binaryName in PATH (via shell)');
-          return binaryName; // Just return the name, shell will resolve
-        }
-      } catch (e) {
-        LoggerService.w('$binaryName not found via shell: $e');
+    final versionArg = binaryName.contains('ffmpeg') ? '-version' : '--version';
+
+    // 0. Check local bin folder first
+    final binaryWithExt = binaryName.endsWith('.exe')
+        ? binaryName
+        : '$binaryName.exe';
+    final localBinPath = '${Directory.current.path}\\bin\\$binaryWithExt';
+
+    if (await File(localBinPath).exists()) {
+      LoggerService.i('Checking if local bin $binaryName is valid...');
+      if (await _verifyBinary(localBinPath, versionArg)) {
+        LoggerService.i('Found valid $binaryName in local bin: $localBinPath');
+        return localBinPath;
+      } else {
+        LoggerService.w('Local bin $binaryName is invalid or a broken stub.');
       }
     }
 
-    // Fallback: Try 'where' command on Windows
+    // 1. Try via shell/PATH
+    if (Platform.isWindows) {
+      if (await _verifyBinary(binaryName, versionArg)) {
+        LoggerService.i('Found valid $binaryName in PATH');
+        return binaryName;
+      }
+    }
+
+    // 2. Fallback: Try 'where' command to get full path from PATH
     try {
       final result = await Process.run('where', [binaryName], runInShell: true);
       if (result.exitCode == 0) {
-        final path = result.stdout.toString().split('\n').first.trim();
-        if (path.isNotEmpty) {
-          LoggerService.i('Found $binaryName at: $path');
-          return path;
+        final paths = result.stdout.toString().split('\r\n');
+        for (var path in paths) {
+          path = path.trim();
+          if (path.isNotEmpty && await _verifyBinary(path, versionArg)) {
+            LoggerService.i('Found valid $binaryName via where: $path');
+            return path;
+          }
         }
       }
     } catch (e) {
-      LoggerService.w('Could not locate $binaryName: $e');
+      LoggerService.w('Could not locate $binaryName via where: $e');
     }
 
-    LoggerService.e('$binaryName not found');
+    LoggerService.e('$binaryName not found or all locations are invalid');
     return null;
+  }
+
+  Future<bool> _verifyBinary(String path, String versionArg) async {
+    try {
+      final result = await Process.run(path, [versionArg], runInShell: true);
+      return result.exitCode == 0;
+    } catch (e) {
+      return false;
+    }
   }
 }

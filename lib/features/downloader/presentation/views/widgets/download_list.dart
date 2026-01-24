@@ -1,0 +1,284 @@
+import 'dart:ui';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gap/gap.dart';
+import '../../../../../core/design_system/foundation/colors.dart';
+import '../../../../../core/design_system/foundation/spacing.dart';
+import '../../../../../core/design_system/foundation/typography.dart';
+import '../../../../../core/design_system/components/app_card.dart';
+import '../../../../../core/design_system/components/app_skeleton.dart';
+import '../../../../../core/design_system/components/status_badge.dart';
+import '../../../domain/entities/download_item.dart';
+import '../../../domain/enums/download_status.dart';
+import '../../providers/filtered_downloads_provider.dart';
+import '../../providers/downloader_provider.dart';
+
+class DownloadList extends ConsumerWidget {
+  const DownloadList({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final searchQuery = ref.watch(downloadSearchQueryProvider);
+    final statusFilter = ref.watch(downloadStatusFilterProvider);
+    final isReorderEnabled =
+        searchQuery.isEmpty && statusFilter == DownloadStatusFilter.all;
+
+    final downloadsAsync = ref.watch(filteredDownloadsProvider);
+    final selectedId = ref.watch(selectedDownloadIdProvider);
+
+    return downloadsAsync.when(
+      loading: () => ListView.separated(
+        padding: const EdgeInsets.all(AppSpacing.m),
+        itemCount: 5,
+        separatorBuilder: (ctx, i) => const Gap(AppSpacing.s),
+        itemBuilder: (context, index) => const AppSkeleton(
+          height: 80,
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+        ),
+      ),
+      error: (error, stack) => Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+            const Gap(AppSpacing.m),
+            Text(
+              "Error loading downloads",
+              style: AppTypography.body.copyWith(color: AppColors.textPrimary),
+            ),
+            const Gap(AppSpacing.s),
+            Text(
+              error.toString(),
+              style: AppTypography.caption.copyWith(color: AppColors.error),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+      data: (downloads) {
+        if (downloads.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.inbox,
+                  size: 48,
+                  color: AppColors.textDisabled,
+                ),
+                const Gap(AppSpacing.m),
+                Text(
+                  "No downloads found",
+                  style: AppTypography.body.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        if (!isReorderEnabled) {
+          return ListView.separated(
+            padding: const EdgeInsets.all(AppSpacing.m),
+            itemCount: downloads.length,
+            separatorBuilder: (ctx, i) => const Gap(AppSpacing.s),
+            itemBuilder: (context, index) {
+              final item = downloads[index];
+              final isSelected = item.id == selectedId;
+              return _DownloadItemCard(
+                item: item,
+                isSelected: isSelected,
+                onTap: () {
+                  ref.read(selectedDownloadIdProvider.notifier).state = item.id;
+                },
+              );
+            },
+          );
+        }
+
+        return ReorderableListView.builder(
+          padding: const EdgeInsets.all(AppSpacing.m),
+          itemCount: downloads.length,
+          proxyDecorator: (widget, index, animation) {
+            return AnimatedBuilder(
+              animation: animation,
+              builder: (BuildContext context, Widget? child) {
+                final double animValue = Curves.easeInOut.transform(
+                  animation.value,
+                );
+                final double elevation = lerpDouble(0, 6, animValue)!;
+                return Material(
+                  elevation: elevation,
+                  color: Colors.transparent,
+                  shadowColor: Colors.black.withValues(alpha: 0.5),
+                  child: widget,
+                );
+              },
+              child: widget,
+            );
+          },
+          onReorder: (oldIndex, newIndex) {
+            ref.read(downloadListProvider.notifier).reorder(oldIndex, newIndex);
+          },
+          itemBuilder: (context, index) {
+            final item = downloads[index];
+            final isSelected = item.id == selectedId;
+
+            return Container(
+              key: ValueKey(item.id),
+              margin: const EdgeInsets.only(bottom: AppSpacing.s),
+              child: _DownloadItemCard(
+                item: item,
+                isSelected: isSelected,
+                onTap: () {
+                  ref.read(selectedDownloadIdProvider.notifier).state = item.id;
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _DownloadItemCard extends StatelessWidget {
+  final DownloadItem item;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _DownloadItemCard({
+    required this.item,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDownloading = item.status == DownloadStatus.downloading;
+
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(AppSpacing.m),
+      child: Row(
+        children: [
+          // Thumbnail / Icon
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: const Icon(
+              Icons.movie_outlined,
+              color: AppColors.textSecondary,
+              size: 24,
+            ),
+          ),
+          const Gap(AppSpacing.m),
+
+          // Info Column
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title Row
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        (item.title == null || item.title!.isEmpty)
+                            ? "Unknown Title"
+                            : item.title!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.label.copyWith(
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.textPrimary,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    const Gap(AppSpacing.s),
+                    StatusBadge(status: item.status, error: item.error),
+                  ],
+                ),
+
+                const Gap(4),
+
+                // Meta Row or Progress
+                if (isDownloading ||
+                    item.status == DownloadStatus.extracting) ...[
+                  const Gap(4),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: LinearProgressIndicator(
+                      value: item.progress > 0 ? item.progress : null,
+                      backgroundColor: AppColors.background,
+                      color: AppColors.primary,
+                      minHeight: 4,
+                    ),
+                  ),
+                  const Gap(6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "${(item.progress * 100).toStringAsFixed(1)}%",
+                        style: AppTypography.mono.copyWith(
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      Text(_buildMetaString(), style: AppTypography.mono),
+                    ],
+                  ),
+                ] else
+                  Text(
+                    _buildMetaString(),
+                    style: AppTypography.bodySmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _buildMetaString() {
+    final parts = <String>[];
+
+    // Source
+    parts.add(item.source);
+
+    // Size logic
+    if (item.totalSize.isNotEmpty) {
+      if (item.downloadedSize.isNotEmpty &&
+          item.status == DownloadStatus.downloading) {
+        parts.add("${item.downloadedSize} / ${item.totalSize}");
+      } else {
+        parts.add(item.totalSize);
+      }
+    } else if (item.downloadedSize.isNotEmpty) {
+      parts.add(item.downloadedSize);
+    }
+
+    // Speed
+    if (item.speed.isNotEmpty && item.status == DownloadStatus.downloading) {
+      parts.add(item.speed);
+    }
+
+    // ETA
+    if (item.eta.isNotEmpty && item.status == DownloadStatus.downloading) {
+      parts.add("ETA ${item.eta}");
+    }
+
+    return parts.join(" • ");
+  }
+}

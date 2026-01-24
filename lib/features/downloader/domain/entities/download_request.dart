@@ -38,4 +38,41 @@ class DownloadRequest {
     this.cookiesFilePath,
     this.useTorProxy = false,
   });
+  Map<String, dynamic> toJson() {
+    return {
+      'url': url,
+      'outputFolder': outputFolder,
+      'audioOnly': audioOnly,
+      'customFilename': customFilename,
+      'preferredQuality': preferredQuality,
+      'outputFormat': outputFormat,
+      'audioFormat': audioFormat,
+      'embedThumbnail': embedThumbnail,
+      'embedSubtitles': embedSubtitles,
+      'twitterIncludeReplies': twitterIncludeReplies,
+      'twitchDownloadChat': twitchDownloadChat,
+      'twitchQuality': twitchQuality,
+      'cookiesFilePath': cookiesFilePath,
+      'useTorProxy': useTorProxy,
+    };
+  }
+
+  factory DownloadRequest.fromJson(Map<String, dynamic> json) {
+    return DownloadRequest(
+      url: json['url'] as String,
+      outputFolder: json['outputFolder'] as String?,
+      audioOnly: json['audioOnly'] as bool? ?? false,
+      customFilename: json['customFilename'] as String?,
+      preferredQuality: json['preferredQuality'] as String? ?? 'best',
+      outputFormat: json['outputFormat'] as String? ?? 'mp4',
+      audioFormat: json['audioFormat'] as String? ?? 'mp3',
+      embedThumbnail: json['embedThumbnail'] as bool? ?? true,
+      embedSubtitles: json['embedSubtitles'] as bool? ?? false,
+      twitterIncludeReplies: json['twitterIncludeReplies'] as bool? ?? false,
+      twitchDownloadChat: json['twitchDownloadChat'] as bool? ?? false,
+      twitchQuality: json['twitchQuality'] as String? ?? '1080p60',
+      cookiesFilePath: json['cookiesFilePath'] as String?,
+      useTorProxy: json['useTorProxy'] as bool? ?? false,
+    );
+  }
 }

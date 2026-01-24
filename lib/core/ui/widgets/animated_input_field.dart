@@ -37,7 +37,7 @@ class _AnimatedInputFieldState extends State<AnimatedInputField> {
   Widget build(BuildContext context) {
     return AnimatedContainer(
       duration: 300.ms,
-      curve: Curves.easeOutBack,
+      curve: Curves.easeOutCubic, // easeOutBack causes negative blur values
       decoration: BoxDecoration(
         color: _isFocused ? Palette.glassWhiteHover : Palette.glassWhite,
         borderRadius: BorderRadius.circular(20),
