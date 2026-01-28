@@ -4,6 +4,7 @@ import '../core/logger/logger_service.dart';
 class BinaryLocator {
   static const String ytDlpName = 'yt-dlp';
   static const String ffmpegName = 'ffmpeg';
+  static const String ffprobeName = 'ffprobe';
   static const String galleryDlName = 'gallery-dl';
 
   // Custom paths can be set from settings
@@ -20,6 +21,10 @@ class BinaryLocator {
 
   Future<String?> findFfmpeg() async {
     return _findBinary(ffmpegName);
+  }
+
+  Future<String?> findFfprobe() async {
+    return _findBinary(ffprobeName);
   }
 
   Future<String?> findAria2c() async {
@@ -55,13 +60,24 @@ class BinaryLocator {
 
     // 3. Try common pip install locations on Windows
     final userProfile = Platform.environment['USERPROFILE'];
+    final programData = Platform.environment['ProgramData']; // C:\ProgramData
+
+    // Explicit check for Chocolatey (common on Windows)
+    if (programData != null) {
+      final chocoPath = '$programData\\chocolatey\\bin\\gallery-dl.exe';
+      if (await File(chocoPath).exists()) {
+        LoggerService.i('Found gallery-dl in Chocolatey: $chocoPath');
+        return chocoPath;
+      }
+    }
+
     if (userProfile != null) {
       final commonPaths = [
-        '$userProfile\\AppData\\Local\\Programs\\Python\\Python314\\Scripts\\gallery-dl.exe',
+        '$userProfile\\AppData\\Local\\Programs\\Python\\Python314\\Scripts\\gallery-dl.exe', // Python 3.14 (User)
         '$userProfile\\AppData\\Local\\Programs\\Python\\Python311\\Scripts\\gallery-dl.exe',
         '$userProfile\\AppData\\Local\\Programs\\Python\\Python310\\Scripts\\gallery-dl.exe',
         '$userProfile\\AppData\\Local\\Programs\\Python\\Python39\\Scripts\\gallery-dl.exe',
-        '$userProfile\\AppData\\Roaming\\Python\\Python314\\Scripts\\gallery-dl.exe',
+        '$userProfile\\AppData\\Roaming\\Python\\Python314\\Scripts\\gallery-dl.exe', // Python 3.14 (Roaming)
         '$userProfile\\AppData\\Roaming\\Python\\Python311\\Scripts\\gallery-dl.exe',
         '$userProfile\\AppData\\Roaming\\Python\\Python310\\Scripts\\gallery-dl.exe',
       ];
@@ -82,24 +98,36 @@ class BinaryLocator {
   Future<String?> _findBinary(String binaryName) async {
     final versionArg = binaryName.contains('ffmpeg') ? '-version' : '--version';
 
-    // 0. Check local bin folder first
+    // 0. FORCE Check local bin folder first
     final binaryWithExt = binaryName.endsWith('.exe')
         ? binaryName
         : '$binaryName.exe';
-    final localBinPath = '${Directory.current.path}\\bin\\$binaryWithExt';
 
-    if (await File(localBinPath).exists()) {
-      LoggerService.i('Checking if local bin $binaryName is valid...');
-      if (await _verifyBinary(localBinPath, versionArg)) {
-        LoggerService.i('Found valid $binaryName in local bin: $localBinPath');
-        return localBinPath;
-      } else {
-        LoggerService.w('Local bin $binaryName is invalid or a broken stub.');
+    // Check multiple potential 'bin' locations relative to execution
+    final potentialPaths = [
+      '${Directory.current.path}\\bin\\$binaryWithExt',
+      '${File(Platform.resolvedExecutable).parent.path}\\bin\\$binaryWithExt',
+      '${File(Platform.resolvedExecutable).parent.path}\\data\\flutter_assets\\bin\\$binaryWithExt',
+    ];
+
+    for (final path in potentialPaths) {
+      if (await File(path).exists()) {
+        LoggerService.i('Forcing usage of local binary: $path');
+        return path;
       }
     }
 
-    // 1. Try via shell/PATH
+    // 1. Try via shell/PATH (Fallback only if NOT in bin)
     if (Platform.isWindows) {
+      // Check Chocolatey specifically first (more reliable than generic PATH sometimes)
+      final programData = Platform.environment['ProgramData'];
+      if (programData != null) {
+        final chocoPath = '$programData\\chocolatey\\bin\\$binaryWithExt';
+        if (await File(chocoPath).exists()) {
+          return chocoPath;
+        }
+      }
+
       if (await _verifyBinary(binaryName, versionArg)) {
         LoggerService.i('Found valid $binaryName in PATH');
         return binaryName;

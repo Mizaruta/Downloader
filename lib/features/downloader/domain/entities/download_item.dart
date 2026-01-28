@@ -13,6 +13,8 @@ class DownloadItem {
   final String downloadedSize; // e.g., "10.5MiB"
   final String totalSize; // e.g., "300MiB"
   final int sortOrder;
+  final bool usesAria2c;
+  final String? thumbnailUrl; // Added field
 
   const DownloadItem({
     required this.id,
@@ -28,6 +30,8 @@ class DownloadItem {
     this.step = '',
     this.filePath,
     this.sortOrder = 0,
+    this.usesAria2c = false,
+    this.thumbnailUrl,
   });
 
   final String step; // Current step (e.g., "Merging audio/video...")
@@ -35,25 +39,73 @@ class DownloadItem {
   final String? filePath;
 
   String get source {
-    final url = request.url.toLowerCase();
-    if (url.contains('youtube') || url.contains('youtu.be')) return 'YouTube';
-    if (url.contains('instagram')) return 'Instagram';
-    if (url.contains('twitter') || url.contains('x.com')) return 'Twitter';
-    if (url.contains('twitch')) return 'Twitch';
-    if (url.contains('kick')) return 'Kick';
-
-    // Fallback: extract domain name (e.g., "dailymotion" from "dailymotion.com")
     try {
       final uri = Uri.parse(request.url);
-      if (uri.host.isNotEmpty) {
-        final host = uri.host.replaceFirst('www.', '');
-        final parts = host.split('.');
-        if (parts.length >= 2) {
-          // Capitalize first letter
-          final name = parts[0];
+      String textToCheck = uri.host.toLowerCase();
+
+      if (uri.scheme == 'imported') {
+        // Check the path (filename) for keywords since we don't have a domain
+        textToCheck = uri.path.toLowerCase();
+      }
+
+      if (textToCheck.contains('youtube') || textToCheck.contains('youtu.be')) {
+        return 'YouTube';
+      }
+      if (textToCheck.contains('instagram')) {
+        return 'Instagram';
+      }
+
+      // Twitter/X logic
+      if (textToCheck.contains('twitter') ||
+          textToCheck == 'x.com' ||
+          textToCheck.endsWith('.x.com')) {
+        return 'Twitter';
+      }
+
+      if (textToCheck.contains('twitch')) {
+        return 'Twitch';
+      }
+      if (textToCheck.contains('kick') &&
+          !textToCheck.contains('kickstarter')) {
+        return 'Kick';
+      }
+      if (textToCheck.contains('tiktok')) {
+        return 'TikTok';
+      }
+      if (textToCheck.contains('reddit') || textToCheck.contains('redd.it')) {
+        return 'Reddit';
+      }
+      if (textToCheck.contains('facebook') ||
+          textToCheck.contains('fb.com') ||
+          textToCheck.contains('fb.watch')) {
+        return 'Facebook';
+      }
+
+      if (textToCheck.contains('xnxx')) {
+        return 'Xnxx';
+      }
+      if (textToCheck.contains('xhamster')) {
+        return 'Xhamster';
+      }
+
+      if (uri.scheme == 'imported') {
+        return 'Local';
+      }
+
+      // Fallback: extract domain name
+      if (textToCheck.isNotEmpty) {
+        var name = textToCheck.replaceFirst('www.', '');
+        final parts = name.split('.');
+        if (parts.length > 2) {
+          name = parts[parts.length - 2];
+        } else if (parts.length == 2) {
+          name = parts[0];
+        }
+
+        if (name.isNotEmpty) {
           return name[0].toUpperCase() + name.substring(1);
         }
-        return host;
+        return name;
       }
     } catch (_) {}
 
@@ -72,6 +124,8 @@ class DownloadItem {
     String? step,
     String? filePath,
     int? sortOrder,
+    bool? usesAria2c,
+    String? thumbnailUrl, // Added param
   }) {
     return DownloadItem(
       id: id,
@@ -87,6 +141,8 @@ class DownloadItem {
       step: step ?? this.step,
       filePath: filePath ?? this.filePath,
       sortOrder: sortOrder ?? this.sortOrder,
+      usesAria2c: usesAria2c ?? this.usesAria2c,
+      thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl, // Added assignment
     );
   }
 
@@ -105,6 +161,8 @@ class DownloadItem {
       'step': step,
       'filePath': filePath,
       'sortOrder': sortOrder,
+      'usesAria2c': usesAria2c,
+      'thumbnailUrl': thumbnailUrl, // Added
     };
   }
 
@@ -125,6 +183,8 @@ class DownloadItem {
       step: json['step'] as String? ?? '',
       filePath: json['filePath'] as String?,
       sortOrder: json['sortOrder'] as int? ?? 0,
+      usesAria2c: json['usesAria2c'] as bool? ?? false,
+      thumbnailUrl: json['thumbnailUrl'] as String?, // Added
     );
   }
 }

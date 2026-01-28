@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 
 /// App Settings State
 class AppSettings {
@@ -13,6 +14,8 @@ class AppSettings {
   final bool embedThumbnail;
   final bool embedSubtitles;
 
+  final int concurrentFragments; // Threads per download
+
   // Site-specific settings
   final bool twitterIncludeReplies;
   final bool twitchDownloadChat;
@@ -21,13 +24,23 @@ class AppSettings {
   final String cookiesFilePath; // Path to cookies.txt for protected sites
   final bool useTorProxy; // Use Tor SOCKS5 proxy (127.0.0.1:9050)
 
+  final bool clipboardMonitorEnabled;
+  final bool minimizeToTray;
+  final int serverPort;
+  final String apiToken;
+
   final String themeMode; // 'system', 'light', 'dark'
+  final bool doNotDisturb; // Stop Windows/Extension notifications
+
+  final String cookieBrowser; // 'firefox', 'chrome', 'edge', etc.
+  final bool organizeBySite; // Create subfolders per site
 
   const AppSettings({
     this.themeMode = 'system',
     this.audioOnly = false,
     this.autoStart = true,
     this.maxConcurrent = 3,
+    this.concurrentFragments = 16, // Default to 16 threads
     this.outputFolder = '',
     this.preferredQuality = 'best',
     this.outputFormat = 'mp4', // Default to MP4 for max compatibility
@@ -40,6 +53,13 @@ class AppSettings {
     this.adultSitesEnabled = false,
     this.cookiesFilePath = '',
     this.useTorProxy = false,
+    this.clipboardMonitorEnabled = true,
+    this.minimizeToTray = false,
+    this.serverPort = 6969,
+    this.apiToken = '',
+    this.doNotDisturb = false,
+    this.cookieBrowser = 'firefox',
+    this.organizeBySite = false,
   });
 
   AppSettings copyWith({
@@ -47,6 +67,7 @@ class AppSettings {
     bool? audioOnly,
     bool? autoStart,
     int? maxConcurrent,
+    int? concurrentFragments,
     String? outputFolder,
     String? preferredQuality,
     String? outputFormat,
@@ -59,12 +80,20 @@ class AppSettings {
     bool? adultSitesEnabled,
     String? cookiesFilePath,
     bool? useTorProxy,
+    bool? clipboardMonitorEnabled,
+    bool? minimizeToTray,
+    int? serverPort,
+    String? apiToken,
+    bool? doNotDisturb,
+    String? cookieBrowser,
+    bool? organizeBySite,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
       audioOnly: audioOnly ?? this.audioOnly,
       autoStart: autoStart ?? this.autoStart,
       maxConcurrent: maxConcurrent ?? this.maxConcurrent,
+      concurrentFragments: concurrentFragments ?? this.concurrentFragments,
       outputFolder: outputFolder ?? this.outputFolder,
       preferredQuality: preferredQuality ?? this.preferredQuality,
       outputFormat: outputFormat ?? this.outputFormat,
@@ -78,6 +107,14 @@ class AppSettings {
       adultSitesEnabled: adultSitesEnabled ?? this.adultSitesEnabled,
       cookiesFilePath: cookiesFilePath ?? this.cookiesFilePath,
       useTorProxy: useTorProxy ?? this.useTorProxy,
+      clipboardMonitorEnabled:
+          clipboardMonitorEnabled ?? this.clipboardMonitorEnabled,
+      minimizeToTray: minimizeToTray ?? this.minimizeToTray,
+      serverPort: serverPort ?? this.serverPort,
+      apiToken: apiToken ?? this.apiToken,
+      doNotDisturb: doNotDisturb ?? this.doNotDisturb,
+      cookieBrowser: cookieBrowser ?? this.cookieBrowser,
+      organizeBySite: organizeBySite ?? this.organizeBySite,
     );
   }
 }
@@ -87,6 +124,7 @@ const _kThemeMode = 'theme_mode';
 const _kAudioOnly = 'audio_only';
 const _kAutoStart = 'auto_start';
 const _kMaxConcurrent = 'max_concurrent';
+const _kConcurrentFragments = 'concurrent_fragments';
 const _kOutputFolder = 'output_folder';
 const _kPreferredQuality = 'preferred_quality';
 const _kOutputFormat = 'output_format';
@@ -99,6 +137,13 @@ const _kTwitchQuality = 'twitch_quality';
 const _kAdultSitesEnabled = 'adult_sites_enabled';
 const _kCookiesFilePath = 'cookies_file_path';
 const _kUseTorProxy = 'use_tor_proxy';
+const _kClipboardMonitorEnabled = 'clipboard_monitor_enabled';
+const _kMinimizeToTray = 'minimize_to_tray';
+const _kServerPort = 'server_port';
+const _kApiToken = 'api_token';
+const _kDND = 'do_not_disturb';
+const _kCookieBrowser = 'cookie_browser';
+const _kOrganizeBySite = 'organize_by_site';
 
 /// Global SharedPreferences instance holder
 SharedPreferences? _prefsInstance;
@@ -128,6 +173,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       audioOnly: prefs.getBool(_kAudioOnly) ?? false,
       autoStart: prefs.getBool(_kAutoStart) ?? true,
       maxConcurrent: prefs.getInt(_kMaxConcurrent) ?? 3,
+      concurrentFragments: prefs.getInt(_kConcurrentFragments) ?? 16,
       outputFolder: prefs.getString(_kOutputFolder) ?? '',
       preferredQuality: prefs.getString(_kPreferredQuality) ?? 'best',
       outputFormat: prefs.getString(_kOutputFormat) ?? 'mp4',
@@ -140,7 +186,18 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       adultSitesEnabled: prefs.getBool(_kAdultSitesEnabled) ?? false,
       cookiesFilePath: prefs.getString(_kCookiesFilePath) ?? '',
       useTorProxy: prefs.getBool(_kUseTorProxy) ?? false,
+      clipboardMonitorEnabled: prefs.getBool(_kClipboardMonitorEnabled) ?? true,
+      minimizeToTray: prefs.getBool(_kMinimizeToTray) ?? false,
+      serverPort: prefs.getInt(_kServerPort) ?? 6969,
+      apiToken: prefs.getString(_kApiToken) ?? Uuid().v4(),
+      doNotDisturb: prefs.getBool(_kDND) ?? false,
+      cookieBrowser: prefs.getString(_kCookieBrowser) ?? 'firefox',
+      organizeBySite: prefs.getBool(_kOrganizeBySite) ?? false,
     );
+    // Ensure token is saved if it was generated
+    if (prefs.getString(_kApiToken) == null) {
+      prefs.setString(_kApiToken, state.apiToken);
+    }
   }
 
   void setThemeMode(String value) {
@@ -161,6 +218,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   void setMaxConcurrent(int value) {
     state = state.copyWith(maxConcurrent: value);
     prefs.setInt(_kMaxConcurrent, value);
+  }
+
+  void setConcurrentFragments(int value) {
+    state = state.copyWith(concurrentFragments: value);
+    prefs.setInt(_kConcurrentFragments, value);
   }
 
   void setOutputFolder(String value) {
@@ -226,6 +288,31 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   void clearCookies() {
     state = state.copyWith(cookiesFilePath: '');
     prefs.remove(_kCookiesFilePath);
+  }
+
+  void setClipboardMonitorEnabled(bool value) {
+    state = state.copyWith(clipboardMonitorEnabled: value);
+    prefs.setBool(_kClipboardMonitorEnabled, value);
+  }
+
+  void setMinimizeToTray(bool value) {
+    state = state.copyWith(minimizeToTray: value);
+    prefs.setBool(_kMinimizeToTray, value);
+  }
+
+  void setDoNotDisturb(bool value) {
+    state = state.copyWith(doNotDisturb: value);
+    prefs.setBool(_kDND, value);
+  }
+
+  void setCookieBrowser(String value) {
+    state = state.copyWith(cookieBrowser: value);
+    prefs.setString(_kCookieBrowser, value);
+  }
+
+  void setOrganizeBySite(bool value) {
+    state = state.copyWith(organizeBySite: value);
+    prefs.setBool(_kOrganizeBySite, value);
   }
 }
 

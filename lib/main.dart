@@ -11,7 +11,12 @@ import 'core/theme/app_theme.dart';
 import 'package:modern_downloader/core/services/single_instance_service.dart';
 import 'package:protocol_handler/protocol_handler.dart';
 import 'package:modern_downloader/core/providers/launch_provider.dart';
-import 'dart:io'; // Required for exit(0)
+import 'package:tray_manager/tray_manager.dart';
+import 'package:modern_downloader/core/services/notification_service.dart';
+import 'package:modern_downloader/core/services/clipboard_service.dart';
+import 'package:modern_downloader/core/services/local_server_service.dart';
+import 'package:modern_downloader/features/downloader/data/datasources/startup_cleanup_service.dart';
+import 'dart:io';
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,10 +25,13 @@ void main(List<String> args) async {
   final prefsInstance = await SharedPreferences.getInstance();
   initPrefs(prefsInstance); // Initialize global prefs holder
 
+  // Init Notifications
+  await NotificationService().init();
+
   // Protocol Handler Setup
   await protocolHandler.register('moderndownloader');
 
-  // Single Instance Check (especially for Windows via Browser Extension)
+  // Single Instance Check
   final container = ProviderContainer();
   final alreadyRunning = await SingleInstanceService.check(args, container);
   if (alreadyRunning) {
@@ -32,22 +40,15 @@ void main(List<String> args) async {
   }
 
   String? initialUrl;
-
-  // Try to get initial URI from protocol_handler (cold start from link)
   final initialUrlStr = await protocolHandler.getInitialUrl();
-  if (initialUrlStr != null) {
-    initialUrl = _extractUrlFromUri(initialUrlStr);
-  }
+  if (initialUrlStr != null) initialUrl = _extractUrlFromUri(initialUrlStr);
 
-  // Fallback to command line args if protocol_handler didn't catch it
   if (initialUrl == null && args.isNotEmpty) {
     final protocolArg = args.firstWhere(
       (arg) => arg.contains('moderndownloader://'),
       orElse: () => '',
     );
-    if (protocolArg.isNotEmpty) {
-      initialUrl = _extractUrlFromUri(protocolArg);
-    }
+    if (protocolArg.isNotEmpty) initialUrl = _extractUrlFromUri(protocolArg);
   }
 
   if (initialUrl != null) {
@@ -72,7 +73,7 @@ void main(List<String> args) async {
     });
   }
 
-  // Listen for deep links while the app is running
+  // Listen for deep links
   protocolHandler.addListener(_ProtocolListener(container));
 
   runApp(
@@ -83,13 +84,13 @@ void main(List<String> args) async {
   );
 }
 
+// ... _extractUrlFromUri and _ProtocolListener remain the same ...
 String? _extractUrlFromUri(String uriString) {
   try {
     final uri = Uri.parse(uriString);
     if (uri.queryParameters.containsKey('url')) {
       return uri.queryParameters['url'];
     }
-    // Handle cases where the URL is the host or path (depending on browser/OS behavior)
     if (uri.host == 'open' && uri.queryParameters.containsKey('url')) {
       return uri.queryParameters['url'];
     }
@@ -108,18 +109,94 @@ class _ProtocolListener extends ProtocolListener {
     final extractedUrl = _extractUrlFromUri(url);
     if (extractedUrl != null) {
       container.read(launchUrlProvider.notifier).state = extractedUrl;
-      // Focus window when link received
       windowManager.show();
       windowManager.focus();
     }
   }
 }
 
-class ModernDownloaderApp extends ConsumerWidget {
+class ModernDownloaderApp extends ConsumerStatefulWidget {
   const ModernDownloaderApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ModernDownloaderApp> createState() =>
+      _ModernDownloaderAppState();
+}
+
+class _ModernDownloaderAppState extends ConsumerState<ModernDownloaderApp>
+    with WindowListener, TrayListener {
+  @override
+  void initState() {
+    super.initState();
+    windowManager.addListener(this);
+    trayManager.addListener(this);
+    _initTray();
+
+    // Start Clipboard Monitor
+    ref.read(clipboardServiceProvider).startMonitoring();
+
+    // Start Local Server for Extension
+    ref.read(localServerServiceProvider).start();
+
+    // Listen to clipboard stream
+    ref.read(clipboardServiceProvider).clipboardStream.listen((url) {
+      _handleClipboardUrl(url);
+    });
+
+    // Cleanup Loop
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final settings = ref.read(settingsProvider);
+      StartupCleanupService.cleanup(settings.outputFolder);
+    });
+  }
+
+  Future<void> _initTray() async {
+    await trayManager.setIcon('windows/runner/resources/app_icon.ico');
+    // If specific icon is needed, we would need to add it to pubspec assets and use a helper
+    // For now assuming standard windows path or fallback.
+    // If this fails, tray just won't show icon but won't crash app (hopefully).
+  }
+
+  void _handleClipboardUrl(String url) {
+    // Show Notification with action or just a toast
+    NotificationService().showClipboardDetected(url);
+    // Optionally we could show a dialog if the window is focused
+    // But simply updating the variable or notifying is safer for now.
+
+    // We can also auto-set the launchUrlProvider if we want the "Add Download" dialog
+    // to pick it up immediately when the user clicks "+"
+    ref.read(launchUrlProvider.notifier).state = url;
+  }
+
+  @override
+  void dispose() {
+    windowManager.removeListener(this);
+    trayManager.removeListener(this);
+    ref.read(clipboardServiceProvider).stopMonitoring();
+    super.dispose();
+  }
+
+  @override
+  void onWindowMinimize() {
+    final minimizeToTray = ref.read(settingsProvider).minimizeToTray;
+    if (minimizeToTray) {
+      windowManager.hide();
+    }
+  }
+
+  @override
+  void onTrayIconMouseDown() {
+    windowManager.show();
+    windowManager.focus();
+  }
+
+  @override
+  void onTrayIconRightMouseDown() {
+    trayManager.popUpContextMenu();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
     final settings = ref.watch(settingsProvider);
 
@@ -138,8 +215,7 @@ class ModernDownloaderApp extends ConsumerWidget {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: AppConfig.appName,
-      theme: AppTheme
-          .lightTheme, // Need lightTheme definition or just use dark if only one
+      theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
       routerConfig: router,

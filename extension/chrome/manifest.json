@@ -1,16 +1,42 @@
 {
     "manifest_version": 3,
-    "name": "Modern Downloader Integration",
-    "version": "1.0",
-    "description": "Send links to Modern Downloader via context menu.",
+    "name": "Modern Downloader",
+    "version": "2.0.0",
+    "description": "Send links directly to Modern Downloader app.",
     "permissions": [
+        "activeTab",
+        "scripting",
+        "cookies",
         "contextMenus",
-        "activeTab"
+        "storage"
     ],
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "content.js"
+            ]
+        }
+    ],
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        }
+    },
     "background": {
         "service_worker": "background.js"
     },
-    "action": {
-        "default_title": "Send to Downloader"
-    }
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+    },
+    "host_permissions": [
+        "*://*/*"
+    ]
 }

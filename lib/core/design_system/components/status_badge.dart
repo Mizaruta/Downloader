@@ -53,6 +53,8 @@ class StatusBadge extends StatelessWidget {
         return (AppColors.warning, 'EXTRACTING');
       case DownloadStatus.paused:
         return (AppColors.textSecondary, 'PAUSED');
+      case DownloadStatus.duplicate:
+        return (AppColors.textSecondary, 'DOUBLON');
     }
   }
 }

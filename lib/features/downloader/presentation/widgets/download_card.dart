@@ -10,12 +10,14 @@ class DownloadCard extends StatelessWidget {
   final DownloadItem item;
   final VoidCallback? onCancel;
   final VoidCallback? onPause;
+  final VoidCallback? onRetry;
 
   const DownloadCard({
     super.key,
     required this.item,
     this.onCancel,
     this.onPause,
+    this.onRetry,
   });
 
   @override
@@ -103,12 +105,29 @@ class DownloadCard extends StatelessWidget {
                   ),
                 ),
                 // Action - only show for active downloads
-                if (onCancel != null && _isActive(item))
-                  _buildActionButton(
-                    icon: Icons.close_rounded,
-                    onTap: onCancel!,
-                    color: IOSTheme.systemGray3,
-                  ),
+                if (_isActive(item)) ...[
+                  if (onCancel != null)
+                    _buildActionButton(
+                      icon: Icons.close_rounded,
+                      onTap: onCancel!,
+                      color: IOSTheme.systemGray3,
+                    ),
+                ] else if (item.status == DownloadStatus.failed ||
+                    item.status == DownloadStatus.canceled) ...[
+                  if (onRetry != null && item.status != DownloadStatus.canceled)
+                    _buildActionButton(
+                      icon: Icons.refresh_rounded,
+                      onTap: onRetry!,
+                      color: IOSTheme.systemBlue,
+                    ),
+                  const Gap(8),
+                  if (onCancel != null)
+                    _buildActionButton(
+                      icon: Icons.delete_outline_rounded,
+                      onTap: onCancel!,
+                      color: IOSTheme.systemRed,
+                    ),
+                ],
               ],
             ),
             const Gap(16),

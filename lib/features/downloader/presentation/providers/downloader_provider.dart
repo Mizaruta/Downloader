@@ -31,7 +31,7 @@ final downloaderRepositoryProvider = Provider<IDownloaderRepository>((ref) {
   return DownloaderRepositoryImpl(
     ref.read(ytDlpSourceProvider),
     ref.read(galleryDlSourceProvider),
-    ref.read(persistenceServiceProvider), // Updated injection
+    ref.read(persistenceServiceProvider),
   );
 });
 
@@ -47,7 +47,6 @@ class DownloadListNotifier
   final IDownloaderRepository _repository;
   final Ref _ref;
 
-  static const int _maxConcurrentDownloads = 3;
   final List<DownloadRequest> _queue = [];
 
   DownloadListNotifier(this._repository, this._ref)
@@ -62,6 +61,13 @@ class DownloadListNotifier
       final items = _repository.getCurrentDownloads();
       state = AsyncValue.data(items);
       _listenToUpdates();
+
+      // Listen to Max Concurrent changes to auto-start pending downloads
+      _ref.listen<AppSettings>(settingsProvider, (previous, next) {
+        if (previous?.maxConcurrent != next.maxConcurrent) {
+          _processQueue();
+        }
+      });
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -89,8 +95,18 @@ class DownloadListNotifier
 
         if (item.status == DownloadStatus.completed ||
             item.status == DownloadStatus.failed ||
-            item.status == DownloadStatus.canceled) {
+            item.status == DownloadStatus.canceled ||
+            item.status == DownloadStatus.duplicate) {
           _processQueue();
+        }
+
+        // Auto-delete duplicates after 5 seconds
+        if (item.status == DownloadStatus.duplicate) {
+          Future.delayed(const Duration(seconds: 5), () {
+            if (mounted) {
+              deleteDownload(item.id);
+            }
+          });
         }
       });
     });
@@ -105,7 +121,14 @@ class DownloadListNotifier
     }
   }
 
-  Future<void> startDownload(String url) async {
+  Future<void> startDownload(
+    String url, {
+    String? rawCookies,
+    String? videoFormatId,
+    String? userAgent,
+    String? cookiesFilePath,
+    bool? organizeBySite,
+  }) async {
     final settings = _ref.read(settingsProvider);
 
     final request = DownloadRequest(
@@ -122,10 +145,18 @@ class DownloadListNotifier
       twitterIncludeReplies: settings.twitterIncludeReplies,
       twitchDownloadChat: settings.twitchDownloadChat,
       twitchQuality: settings.twitchQuality,
-      cookiesFilePath: settings.cookiesFilePath.isNotEmpty
-          ? settings.cookiesFilePath
-          : null,
+      cookiesFilePath:
+          cookiesFilePath ??
+          (settings.cookiesFilePath.isNotEmpty
+              ? settings.cookiesFilePath
+              : null),
       useTorProxy: settings.useTorProxy,
+      concurrentFragments: settings.concurrentFragments,
+      rawCookies: rawCookies,
+      videoFormatId: videoFormatId,
+      cookieBrowser: settings.cookieBrowser,
+      organizeBySite: organizeBySite ?? settings.organizeBySite,
+      userAgent: userAgent,
     );
 
     _queue.add(request);
@@ -159,6 +190,12 @@ class DownloadListNotifier
     await _repository.cancelDownload(id);
   }
 
+  Future<void> retryDownload(DownloadItem item) async {
+    await deleteDownload(item.id);
+    _queue.add(item.request);
+    await _processQueue();
+  }
+
   Future<void> _processQueue() async {
     final currentList = state.valueOrNull ?? [];
     final activeCount = currentList
@@ -169,7 +206,10 @@ class DownloadListNotifier
         )
         .length;
 
-    if (activeCount < _maxConcurrentDownloads && _queue.isNotEmpty) {
+    final settings = _ref.read(settingsProvider);
+    final maxConcurrent = settings.maxConcurrent;
+
+    if (activeCount < maxConcurrent && _queue.isNotEmpty) {
       final nextRequest = _queue.removeAt(0);
       await _repository.startDownload(nextRequest);
       _processQueue();

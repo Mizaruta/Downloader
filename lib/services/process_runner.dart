@@ -32,4 +32,24 @@ class ProcessRunner {
       stderrEncoding: utf8,
     );
   }
+
+  Future<void> kill(Process process) async {
+    if (Platform.isWindows) {
+      // Use taskkill to kill the process tree (/T) forcefully (/F)
+      try {
+        await Process.run('taskkill', [
+          '/F',
+          '/T',
+          '/PID',
+          process.pid.toString(),
+        ]);
+        LoggerService.debug('Killed process tree for PID: ${process.pid}');
+      } catch (e) {
+        LoggerService.w('Failed to kill process tree: $e');
+        process.kill(); // Fallback
+      }
+    } else {
+      process.kill();
+    }
+  }
 }

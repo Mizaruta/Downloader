@@ -4,6 +4,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:modern_downloader/core/theme/app_colors.dart';
 import 'package:modern_downloader/core/providers/launch_provider.dart';
 import 'package:modern_downloader/features/downloader/presentation/views/dialogs/add_download_dialog.dart';
+import 'package:modern_downloader/features/downloader/presentation/providers/downloader_provider.dart';
 import 'sidebar/sidebar.dart';
 
 class AppShell extends ConsumerWidget {
@@ -14,18 +15,18 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Listen for deep link launches (Global)
-    ref.listen<String?>(launchUrlProvider, (previous, next) {
+    ref.listen<LaunchData?>(launchDataProvider, (previous, next) {
       if (next != null) {
-        _handleDeepLink(context, ref, next);
+        _handleLaunchData(context, ref, next);
       }
     });
 
     // Check for initial URL (Cold Start)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!context.mounted) return;
-      final initialUrl = ref.read(launchUrlProvider);
-      if (initialUrl != null) {
-        _handleDeepLink(context, ref, initialUrl);
+      final initialData = ref.read(launchDataProvider);
+      if (initialData != null) {
+        _handleLaunchData(context, ref, initialData);
       }
     });
 
@@ -56,14 +57,44 @@ class AppShell extends ConsumerWidget {
     );
   }
 
-  void _handleDeepLink(BuildContext context, WidgetRef ref, String url) {
+  void _handleLaunchData(BuildContext context, WidgetRef ref, LaunchData data) {
     // Clear the provider to prevent re-triggering
-    ref.read(launchUrlProvider.notifier).state = null;
+    ref.read(launchDataProvider.notifier).state = null;
 
-    // Show the dialog with the URL
+    if (data.shouldAutoStart) {
+      // Direct start for extensions
+      ref
+          .read(downloadListProvider.notifier)
+          .startDownload(
+            data.url,
+            rawCookies: data.cookies,
+            userAgent: data.userAgent,
+          );
+
+      // We still need context for Toast
+      try {
+        // Simple success feedback
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Extension: Download started for ${data.url}"),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      } catch (e) {
+        // Fallback for cold start where context might be tricky
+      }
+      return;
+    }
+
+    // Show the dialog with the URL and cookies (Deep link fallback)
     showDialog(
       context: context,
-      builder: (context) => AddDownloadDialog(initialUrl: url),
+      builder: (context) => AddDownloadDialog(
+        initialUrl: data.url,
+        initialCookies: data.cookies,
+        userAgent: data.userAgent,
+      ),
     );
   }
 }

@@ -8,10 +8,19 @@ import 'package:modern_downloader/core/design_system/foundation/colors.dart';
 import 'package:modern_downloader/core/design_system/foundation/spacing.dart';
 import 'package:modern_downloader/core/design_system/foundation/typography.dart';
 import 'package:modern_downloader/features/downloader/presentation/providers/downloader_provider.dart';
+import 'package:modern_downloader/core/providers/settings_provider.dart';
+import 'quality_selection_dialog.dart';
 
 class AddDownloadDialog extends ConsumerStatefulWidget {
   final String? initialUrl;
-  const AddDownloadDialog({super.key, this.initialUrl});
+  final String? initialCookies;
+  final String? userAgent;
+  const AddDownloadDialog({
+    super.key,
+    this.initialUrl,
+    this.initialCookies,
+    this.userAgent,
+  });
 
   @override
   ConsumerState<AddDownloadDialog> createState() => _AddDownloadDialogState();
@@ -33,15 +42,239 @@ class _AddDownloadDialogState extends ConsumerState<AddDownloadDialog> {
     super.dispose();
   }
 
-  void _submit() {
+  bool _isLoading = false;
+
+  Future<void> _submit() async {
     if (_formKey.currentState?.validate() ?? false) {
       final url = _urlController.text.trim();
-      ref.read(downloadListProvider.notifier).startDownload(url);
-      if (context.mounted) {
-        AppToast.showSuccess(context, "Download started");
-        Navigator.of(context).pop();
+
+      setState(() => _isLoading = true);
+
+      // Check for playlist
+      try {
+        // Simple heuristic first to avoid delay on obvious non-playlists?
+        // No, best to just check if user asks for precision.
+        // Actually, let's treat it as potential playlist.
+        final repo = ref.read(downloaderRepositoryProvider);
+        final items = await repo.fetchPlaylist(url);
+
+        if (!mounted) return;
+
+        if (items.length > 1) {
+          // Playlist Detected
+          setState(() => _isLoading = false);
+          // Show Selection Dialog
+          await _showPlaylistSelection(items, url);
+          if (mounted) Navigator.of(context).pop();
+        } else {
+          // Single Video
+          final settings = ref.read(settingsProvider);
+          String? selectedFormatId;
+
+          if (settings.preferredQuality == 'manual' ||
+              settings.preferredQuality == 'manual+') {
+            setState(() => _isLoading = true);
+            try {
+              final metadata = await repo.fetchMetadata(
+                url,
+                cookies: widget.initialCookies,
+              );
+              final title = metadata['title'] as String? ?? url;
+
+              bool shouldShowDialog = settings.preferredQuality == 'manual';
+
+              if (!shouldShowDialog && settings.preferredQuality == 'manual+') {
+                // Check size (> 500MB)
+                final formats = (metadata['formats'] as List? ?? []);
+                int maxBytes = 0;
+                for (final f in formats) {
+                  final size =
+                      (f['filesize'] as num? ??
+                              f['filesize_approx'] as num? ??
+                              0)
+                          .toInt();
+                  if (size > maxBytes) maxBytes = size;
+                }
+
+                if (maxBytes > 500 * 1024 * 1024) {
+                  shouldShowDialog = true;
+                }
+              }
+
+              if (shouldShowDialog) {
+                if (!mounted) return;
+                selectedFormatId = await showDialog<String>(
+                  context: context,
+                  builder: (context) =>
+                      QualitySelectionDialog(metadata: metadata, title: title),
+                );
+
+                // If user cancelled, don't start download
+                if (selectedFormatId == null) {
+                  setState(() => _isLoading = false);
+                  return;
+                }
+              }
+            } catch (e) {
+              // Fallback to best if metadata fails
+              if (mounted) {
+                AppToast.showError(context, "Failed to fetch quality options");
+              }
+            }
+          }
+
+          ref
+              .read(downloadListProvider.notifier)
+              .startDownload(
+                url,
+                rawCookies: widget.initialCookies,
+                userAgent: widget.userAgent,
+                cookiesFilePath: settings.cookiesFilePath,
+                organizeBySite: settings.organizeBySite,
+                videoFormatId: selectedFormatId == 'best'
+                    ? null
+                    : selectedFormatId,
+              );
+
+          if (mounted) {
+            AppToast.showSuccess(context, "Download started");
+            Navigator.of(context).pop();
+          }
+        }
+      } catch (e) {
+        // Fallback to single download if check fails
+        ref
+            .read(downloadListProvider.notifier)
+            .startDownload(url, rawCookies: widget.initialCookies);
+        if (mounted) Navigator.of(context).pop();
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<void> _showPlaylistSelection(
+    List<Map<String, dynamic>> items,
+    String originalUrl,
+  ) async {
+    // Map of index -> selected
+    final selected = List.generate(items.length, (index) => true);
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text("Playlist Detected (${items.length} videos)"),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 300,
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            setDialogState(() {
+                              for (var i = 0; i < selected.length; i++) {
+                                selected[i] = true;
+                              }
+                            });
+                          },
+                          child: const Text("Select All"),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            setDialogState(() {
+                              for (var i = 0; i < selected.length; i++) {
+                                selected[i] = false;
+                              }
+                            });
+                          },
+                          child: const Text("Deselect All"),
+                        ),
+                      ],
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: items.length,
+                        itemBuilder: (context, index) {
+                          final item = items[index];
+                          final title =
+                              item['title'] ?? item['url'] ?? 'Unknown';
+                          return CheckboxListTile(
+                            value: selected[index],
+                            title: Text(
+                              title,
+                              style: const TextStyle(fontSize: 13),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onChanged: (v) {
+                              setDialogState(
+                                () => selected[index] = v ?? false,
+                              );
+                            },
+                            dense: true,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    // Start selected
+                    int count = 0;
+                    final notifier = ref.read(downloadListProvider.notifier);
+                    for (int i = 0; i < items.length; i++) {
+                      if (selected[i]) {
+                        final itemUrl = items[i]['url'] as String?;
+                        // If no URL (flat playlist sometimes gives id), construct it
+                        String finalUrl = itemUrl ?? originalUrl;
+                        if (items[i]['id'] != null &&
+                            (itemUrl == null || !itemUrl.startsWith('http'))) {
+                          // Assume youtube logic if ID present? Or generic
+                          // yt-dlp flat playlist usually gives 'url': 'https://...' for generic sites
+                          // For youtube it gives id.
+                          if (items[i]['ie_key'] == 'Youtube' ||
+                              originalUrl.contains('youtu')) {
+                            finalUrl =
+                                'https://www.youtube.com/watch?v=${items[i]['id']}';
+                          } else {
+                            // Fallback, use the single entry url if available
+                            if (itemUrl != null) finalUrl = itemUrl;
+                          }
+                        }
+
+                        notifier.startDownload(
+                          finalUrl,
+                          rawCookies: widget.initialCookies,
+                          userAgent: widget.userAgent,
+                        );
+                        count++;
+                      }
+                    }
+                    AppToast.showSuccess(context, "Started $count downloads");
+                    Navigator.of(context).pop();
+                  },
+                  child: Text(
+                    "Download Selected (${selected.where((e) => e).length})",
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -81,21 +314,24 @@ class _AddDownloadDialogState extends ConsumerState<AddDownloadDialog> {
                 autofocus: true,
               ),
               const Gap(AppSpacing.l),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  AppButton.ghost(
-                    label: "Cancel",
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                  const Gap(AppSpacing.xs),
-                  AppButton.primary(
-                    label: "Download",
-                    icon: Icons.download,
-                    onPressed: _submit,
-                  ),
-                ],
-              ),
+              if (_isLoading)
+                const Center(child: LinearProgressIndicator())
+              else
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    AppButton.ghost(
+                      label: "Cancel",
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    const Gap(AppSpacing.xs),
+                    AppButton.primary(
+                      label: "Download",
+                      icon: Icons.download,
+                      onPressed: _submit,
+                    ),
+                  ],
+                ),
             ],
           ),
         ),

@@ -21,7 +21,7 @@ class SettingsView extends ConsumerStatefulWidget {
 class _SettingsViewState extends ConsumerState<SettingsView> {
   BinaryStatus? _ytDlpStatus;
   BinaryStatus? _ffmpegStatus;
-  BinaryStatus? _aria2cStatus; // Added aria2c status
+  BinaryStatus? _aria2cStatus;
   bool _isVerifying = false;
 
   @override
@@ -88,7 +88,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                         _DropdownTile(
                           title: "Preferred Quality",
                           value: settings.preferredQuality,
-                          options: const ["best", "1080p", "720p", "480p"],
+                          options: const ["best", "manual", "manual+"],
                           onChanged: settingsNotifier.setPreferredQuality,
                           icon: Icons.high_quality,
                         ),
@@ -116,6 +116,13 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                           onChanged: settingsNotifier.setOutputFormat,
                           icon: Icons.video_file,
                         ),
+                        _SwitchTile(
+                          title: "Organize by Site",
+                          subtitle: "Create subfolders like Downloads/YouTube/",
+                          value: settings.organizeBySite,
+                          onChanged: settingsNotifier.setOrganizeBySite,
+                          icon: Icons.folder_copy_rounded,
+                        ),
 
                         const Gap(AppSpacing.xl),
                         _SectionTitle("Advanced"),
@@ -125,6 +132,42 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                           value: settings.adultSitesEnabled,
                           onChanged: settingsNotifier.setAdultSitesEnabled,
                           icon: Icons.lock_open,
+                        ),
+                        _SwitchTile(
+                          title: "Clipboard Monitor",
+                          subtitle: "Auto-detect links copied to clipboard",
+                          value: settings.clipboardMonitorEnabled,
+                          onChanged:
+                              settingsNotifier.setClipboardMonitorEnabled,
+                          icon: Icons.paste_rounded,
+                        ),
+                        _SwitchTile(
+                          title: "Minimize to Tray",
+                          subtitle: "Keep running in background when closed",
+                          value: settings.minimizeToTray,
+                          onChanged: settingsNotifier.setMinimizeToTray,
+                          icon: Icons.arrow_downward_rounded,
+                        ),
+                        _SwitchTile(
+                          title: "Do Not Disturb",
+                          subtitle: "Silence all app & extension notifications",
+                          value: settings.doNotDisturb,
+                          onChanged: settingsNotifier.setDoNotDisturb,
+                          icon: Icons.notifications_off_outlined,
+                        ),
+                        _DropdownTile(
+                          title: "Cookies from Browser",
+                          value: settings.cookieBrowser,
+                          options: const [
+                            "firefox",
+                            "chrome",
+                            "edge",
+                            "brave",
+                            "vivaldi",
+                            "opera",
+                          ],
+                          onChanged: settingsNotifier.setCookieBrowser,
+                          icon: Icons.browser_updated_rounded,
                         ),
                         if (settings.adultSitesEnabled) ...[
                           _SwitchTile(
@@ -162,6 +205,37 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                                 : null,
                           ),
                         ],
+
+                        const Gap(AppSpacing.xl),
+                        _SectionTitle("Performance"),
+                        _SliderTile(
+                          title: "Simultaneous Downloads",
+                          subtitle: "Max active downloads at once",
+                          value: settings.maxConcurrent.toDouble().clamp(
+                            1.0,
+                            60.0,
+                          ),
+                          min: 1,
+                          max: 60,
+                          divisions: 59,
+                          onChanged: (v) =>
+                              settingsNotifier.setMaxConcurrent(v.toInt()),
+                          icon: Icons.layers_outlined,
+                        ),
+                        _SliderTile(
+                          title: "Threads per Download",
+                          subtitle: "Parallel connections (fragments) per file",
+                          value: settings.concurrentFragments.toDouble().clamp(
+                            1.0,
+                            64.0,
+                          ),
+                          min: 1,
+                          max: 64,
+                          divisions: 63,
+                          onChanged: (v) => settingsNotifier
+                              .setConcurrentFragments(v.toInt()),
+                          icon: Icons.bolt_rounded,
+                        ),
 
                         const Gap(AppSpacing.xl),
                         _SectionTitle("System"),
@@ -229,6 +303,116 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
+class _SliderTile extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final double value;
+  final double min;
+  final double max;
+  final int? divisions;
+  final ValueChanged<double> onChanged;
+  final IconData icon;
+
+  const _SliderTile({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.min,
+    required this.max,
+    this.divisions,
+    required this.onChanged,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.s),
+      padding: const EdgeInsets.only(
+        left: AppSpacing.m,
+        right: AppSpacing.m,
+        top: AppSpacing.m,
+        bottom: 8,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border.withAlpha(128)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: AppColors.primary, size: 24),
+              const Gap(AppSpacing.m),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTypography.body.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const Gap(2),
+                    Text(
+                      subtitle,
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppColors.border.withValues(alpha: 0.5),
+                  ),
+                ),
+                child: Text(
+                  value.toInt().toString(),
+                  style: AppTypography.mono.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Gap(8),
+          SliderTheme(
+            data: SliderThemeData(
+              trackHeight: 4,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+              activeTrackColor: AppColors.primary,
+              inactiveTrackColor: AppColors.surfaceHighlight,
+              thumbColor: Colors.white,
+              overlayColor: AppColors.primary.withValues(alpha: 0.1),
+            ),
+            child: Slider(
+              value: value,
+              min: min,
+              max: max,
+              divisions: divisions,
+              onChanged: onChanged,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SwitchTile extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -252,7 +436,7 @@ class _SwitchTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border.withOpacity(0.5)),
+        border: Border.all(color: AppColors.border.withAlpha(128)),
       ),
       child: Row(
         children: [

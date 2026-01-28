@@ -6,12 +6,13 @@ import '../../../../../core/design_system/foundation/colors.dart';
 import '../../../../../core/design_system/foundation/spacing.dart';
 import '../../../../../core/design_system/foundation/typography.dart';
 import '../../../../../core/design_system/components/app_card.dart';
-import '../../../../../core/design_system/components/app_skeleton.dart';
+
 import '../../../../../core/design_system/components/status_badge.dart';
 import '../../../domain/entities/download_item.dart';
 import '../../../domain/enums/download_status.dart';
 import '../../providers/filtered_downloads_provider.dart';
 import '../../providers/downloader_provider.dart';
+import 'download_item_skeleton.dart';
 
 class DownloadList extends ConsumerWidget {
   const DownloadList({super.key});
@@ -31,11 +32,9 @@ class DownloadList extends ConsumerWidget {
         padding: const EdgeInsets.all(AppSpacing.m),
         itemCount: 5,
         separatorBuilder: (ctx, i) => const Gap(AppSpacing.s),
-        itemBuilder: (context, index) => const AppSkeleton(
-          height: 80,
-          borderRadius: BorderRadius.all(Radius.circular(12)),
-        ),
+        itemBuilder: (context, index) => const DownloadItemSkeleton(),
       ),
+
       error: (error, stack) => Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -92,6 +91,11 @@ class DownloadList extends ConsumerWidget {
                 onTap: () {
                   ref.read(selectedDownloadIdProvider.notifier).state = item.id;
                 },
+                onRetry: () =>
+                    ref.read(downloadListProvider.notifier).retryDownload(item),
+                onCancel: () => ref
+                    .read(downloadListProvider.notifier)
+                    .deleteDownload(item.id),
               );
             },
           );
@@ -134,6 +138,11 @@ class DownloadList extends ConsumerWidget {
                 onTap: () {
                   ref.read(selectedDownloadIdProvider.notifier).state = item.id;
                 },
+                onRetry: () =>
+                    ref.read(downloadListProvider.notifier).retryDownload(item),
+                onCancel: () => ref
+                    .read(downloadListProvider.notifier)
+                    .deleteDownload(item.id),
               ),
             );
           },
@@ -147,11 +156,15 @@ class _DownloadItemCard extends StatelessWidget {
   final DownloadItem item;
   final bool isSelected;
   final VoidCallback onTap;
+  final VoidCallback onRetry;
+  final VoidCallback onCancel;
 
   const _DownloadItemCard({
     required this.item,
     required this.isSelected,
     required this.onTap,
+    required this.onRetry,
+    required this.onCancel,
   });
 
   @override
@@ -233,7 +246,15 @@ class _DownloadItemCard extends StatelessWidget {
                           color: AppColors.primary,
                         ),
                       ),
-                      Text(_buildMetaString(), style: AppTypography.mono),
+                      const Gap(8),
+                      Flexible(
+                        child: Text(
+                          _buildMetaString(),
+                          style: AppTypography.mono,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
                 ] else
@@ -246,6 +267,29 @@ class _DownloadItemCard extends StatelessWidget {
               ],
             ),
           ),
+
+          // Action Buttons
+          if (item.status == DownloadStatus.failed ||
+              item.status == DownloadStatus.canceled) ...[
+            const Gap(AppSpacing.s),
+            IconButton(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
+              tooltip: "Retry Download",
+              constraints: const BoxConstraints(),
+              padding: const EdgeInsets.all(8),
+            ),
+            IconButton(
+              onPressed: onCancel,
+              icon: const Icon(
+                Icons.delete_outline_rounded,
+                color: AppColors.error,
+              ),
+              tooltip: "Remove",
+              constraints: const BoxConstraints(),
+              padding: const EdgeInsets.all(8),
+            ),
+          ],
         ],
       ),
     );

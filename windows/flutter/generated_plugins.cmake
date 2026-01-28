@@ -3,8 +3,11 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  local_notifier
   protocol_handler_windows
   screen_retriever_windows
+  tray_manager
+  video_player_win
   window_manager
 )
 

@@ -7,4 +7,5 @@ enum DownloadStatus {
   failed,
   canceled,
   paused,
+  duplicate,
 }

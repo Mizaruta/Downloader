@@ -3,6 +3,7 @@ class DownloadRequest {
   final String? outputFolder;
   final bool audioOnly;
   final String? customFilename;
+  final String? rawCookies; // Added field for extension/manual cookies
 
   // Format settings
   final String preferredQuality;
@@ -10,6 +11,7 @@ class DownloadRequest {
   final String audioFormat; // mp3, aac, opus
   final bool embedThumbnail;
   final bool embedSubtitles;
+  final String? videoFormatId; // Specific yt-dlp format code
 
   // Platform-specific
   final bool twitterIncludeReplies;
@@ -21,6 +23,15 @@ class DownloadRequest {
 
   // Proxy settings
   final bool useTorProxy;
+  final int concurrentFragments;
+
+  final String cookieBrowser;
+  final bool organizeBySite;
+  final String? userAgent;
+
+  // Direct Stream Override (Bypassing fetch)
+  final String? forceStreamUrl;
+  final String? forceThumbnailUrl; // Added
 
   const DownloadRequest({
     required this.url,
@@ -37,7 +48,67 @@ class DownloadRequest {
     this.twitchQuality = '1080p60',
     this.cookiesFilePath,
     this.useTorProxy = false,
+    this.concurrentFragments = 16,
+    this.videoFormatId,
+    this.forceStreamUrl,
+    this.forceThumbnailUrl,
+    this.rawCookies,
+    this.cookieBrowser = 'firefox',
+    this.organizeBySite = false,
+    this.userAgent,
   });
+
+  DownloadRequest copyWith({
+    String? url,
+    String? outputFolder,
+    bool? audioOnly,
+    String? customFilename,
+    String? preferredQuality,
+    String? outputFormat,
+    String? audioFormat,
+    bool? embedThumbnail,
+    bool? embedSubtitles,
+    bool? twitterIncludeReplies,
+    bool? twitchDownloadChat,
+    String? twitchQuality,
+    String? cookiesFilePath,
+    bool? useTorProxy,
+    int? concurrentFragments,
+    String? videoFormatId,
+    String? forceStreamUrl,
+    String? forceThumbnailUrl, // Added param
+    String? rawCookies,
+    String? cookieBrowser,
+    bool? organizeBySite,
+    String? userAgent,
+  }) {
+    return DownloadRequest(
+      url: url ?? this.url,
+      outputFolder: outputFolder ?? this.outputFolder,
+      audioOnly: audioOnly ?? this.audioOnly,
+      customFilename: customFilename ?? this.customFilename,
+      preferredQuality: preferredQuality ?? this.preferredQuality,
+      outputFormat: outputFormat ?? this.outputFormat,
+      audioFormat: audioFormat ?? this.audioFormat,
+      embedThumbnail: embedThumbnail ?? this.embedThumbnail,
+      embedSubtitles: embedSubtitles ?? this.embedSubtitles,
+      twitterIncludeReplies:
+          twitterIncludeReplies ?? this.twitterIncludeReplies,
+      twitchDownloadChat: twitchDownloadChat ?? this.twitchDownloadChat,
+      twitchQuality: twitchQuality ?? this.twitchQuality,
+      cookiesFilePath: cookiesFilePath ?? this.cookiesFilePath,
+      useTorProxy: useTorProxy ?? this.useTorProxy,
+      concurrentFragments: concurrentFragments ?? this.concurrentFragments,
+      videoFormatId: videoFormatId ?? this.videoFormatId,
+      forceStreamUrl: forceStreamUrl ?? this.forceStreamUrl,
+      forceThumbnailUrl: forceThumbnailUrl ?? this.forceThumbnailUrl, // Added
+      rawCookies: rawCookies ?? this.rawCookies,
+      cookieBrowser: cookieBrowser ?? this.cookieBrowser,
+      organizeBySite: organizeBySite ?? this.organizeBySite,
+      userAgent: userAgent ?? this.userAgent,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'url': url,
@@ -54,6 +125,14 @@ class DownloadRequest {
       'twitchQuality': twitchQuality,
       'cookiesFilePath': cookiesFilePath,
       'useTorProxy': useTorProxy,
+      'concurrentFragments': concurrentFragments,
+      'videoFormatId': videoFormatId,
+      'forceStreamUrl': forceStreamUrl,
+      'forceThumbnailUrl': forceThumbnailUrl, // Added
+      'rawCookies': rawCookies,
+      'cookieBrowser': cookieBrowser,
+      'organizeBySite': organizeBySite,
+      'userAgent': userAgent,
     };
   }
 
@@ -73,6 +152,14 @@ class DownloadRequest {
       twitchQuality: json['twitchQuality'] as String? ?? '1080p60',
       cookiesFilePath: json['cookiesFilePath'] as String?,
       useTorProxy: json['useTorProxy'] as bool? ?? false,
+      concurrentFragments: json['concurrentFragments'] as int? ?? 16,
+      videoFormatId: json['videoFormatId'] as String?,
+      forceStreamUrl: json['forceStreamUrl'] as String?,
+      forceThumbnailUrl: json['forceThumbnailUrl'] as String?, // Added
+      rawCookies: json['rawCookies'] as String?,
+      cookieBrowser: json['cookieBrowser'] as String? ?? 'firefox',
+      organizeBySite: json['organizeBySite'] as bool? ?? false,
+      userAgent: json['userAgent'] as String?,
     );
   }
 }

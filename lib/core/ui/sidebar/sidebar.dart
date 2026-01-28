@@ -5,6 +5,7 @@ import '../../design_system/foundation/colors.dart';
 import '../../design_system/foundation/spacing.dart';
 import '../../design_system/foundation/typography.dart';
 import '../../design_system/components/app_button.dart';
+import '../../design_system/components/app_skeleton.dart';
 import '../../../../features/downloader/presentation/views/dialogs/add_download_dialog.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -115,73 +116,103 @@ class AppSidebar extends ConsumerWidget {
 
           const Gap(AppSpacing.l),
 
-          // Navigation
-          _NavSection(
-            title: "LIBRARY",
-            children: [
-              _NavItem(
-                icon: Icons.inbox_rounded,
-                label: "All Downloads",
-                count: allDownloads.length,
-                isSelected:
-                    statusFilter == DownloadStatusFilter.all &&
-                    sourceFilter == null,
-                onTap: () => setStatus(DownloadStatusFilter.all),
-              ),
-              _NavItem(
-                icon: Icons.downloading_rounded,
-                label: "Active",
-                count: countActive,
-                isSelected: statusFilter == DownloadStatusFilter.active,
-                onTap: () => setStatus(DownloadStatusFilter.active),
-              ),
-              _NavItem(
-                icon: Icons.check_circle_outline_rounded,
-                label: "Completed",
-                count: countCompleted,
-                isSelected: statusFilter == DownloadStatusFilter.completed,
-                onTap: () => setStatus(DownloadStatusFilter.completed),
-              ),
-              _NavItem(
-                icon: Icons.error_outline_rounded,
-                label: "Failed",
-                count: countFailed,
-                isSelected: statusFilter == DownloadStatusFilter.failed,
-                onTap: () => setStatus(DownloadStatusFilter.failed),
-              ),
-            ],
-          ),
-
           const Gap(AppSpacing.l),
 
-          _NavSection(
-            title: "SOURCES",
-            children: availableSources.map((source) {
-              // Icon mapping
-              IconData icon = Icons.public;
-              if (source == 'YouTube') {
-                icon = Icons.video_library_outlined;
-              } else if (source == 'Instagram') {
-                icon = Icons.photo_camera_outlined;
-              } else if (source == 'Twitter') {
-                icon = Icons.alternate_email;
-              } else if (source == 'Twitch') {
-                icon = Icons.videogame_asset_outlined;
-              } else if (source == 'Kick') {
-                icon = Icons.bolt;
-              }
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _NavSection(
+                    title: "LIBRARY",
+                    children: [
+                      _NavItem(
+                        icon: Icons.inbox_rounded,
+                        label: "All Downloads",
+                        count: allDownloads.length,
+                        isLoading: allDownloadsAsync.isLoading,
+                        isSelected:
+                            statusFilter == DownloadStatusFilter.all &&
+                            sourceFilter == null,
+                        onTap: () => setStatus(DownloadStatusFilter.all),
+                      ),
+                      _NavItem(
+                        icon: Icons.downloading_rounded,
+                        label: "Active",
+                        count: countActive,
+                        isLoading: allDownloadsAsync.isLoading,
+                        isSelected: statusFilter == DownloadStatusFilter.active,
+                        onTap: () => setStatus(DownloadStatusFilter.active),
+                      ),
+                      _NavItem(
+                        icon: Icons.check_circle_outline_rounded,
+                        label: "Completed",
+                        count: countCompleted,
+                        isLoading: allDownloadsAsync.isLoading,
+                        isSelected:
+                            statusFilter == DownloadStatusFilter.completed,
+                        onTap: () => setStatus(DownloadStatusFilter.completed),
+                      ),
+                      _NavItem(
+                        icon: Icons.error_outline_rounded,
+                        label: "Failed",
+                        count: countFailed,
+                        isLoading: allDownloadsAsync.isLoading,
+                        isSelected: statusFilter == DownloadStatusFilter.failed,
+                        onTap: () => setStatus(DownloadStatusFilter.failed),
+                      ),
+                    ],
+                  ),
+                  const Gap(AppSpacing.l),
+                  _NavSection(
+                    title: "SOURCES",
+                    children: allDownloadsAsync.isLoading
+                        ? List.generate(
+                            3,
+                            (index) => const Padding(
+                              padding: EdgeInsets.only(
+                                bottom: 8,
+                                left: 12,
+                                right: 12,
+                              ),
+                              child: AppSkeleton(
+                                height: 24,
+                                borderRadius: BorderRadius.all(
+                                  Radius.circular(6),
+                                ),
+                              ),
+                            ),
+                          )
+                        : availableSources.map((source) {
+                            // Icon mapping
+                            IconData icon = Icons.public;
+                            if (source == 'YouTube') {
+                              icon = Icons.video_library_outlined;
+                            } else if (source == 'Instagram') {
+                              icon = Icons.photo_camera_outlined;
+                            } else if (source == 'Twitter') {
+                              icon = Icons.alternate_email;
+                            } else if (source == 'Twitch') {
+                              icon = Icons.videogame_asset_outlined;
+                            } else if (source == 'Kick') {
+                              icon = Icons.bolt;
+                            }
 
-              return _NavItem(
-                icon: icon,
-                label: source,
-                count: sourceCounts[source] ?? 0,
-                isSelected: sourceFilter == source,
-                onTap: () => setSource(source),
-              );
-            }).toList(),
+                            return _NavItem(
+                              icon: icon,
+                              label: source,
+                              count: sourceCounts[source] ?? 0,
+                              isLoading:
+                                  false, // Sources loaded implies data loaded
+                              isSelected: sourceFilter == source,
+                              onTap: () => setSource(source),
+                            );
+                          }).toList(),
+                  ),
+                  const Gap(AppSpacing.l),
+                ],
+              ),
+            ),
           ),
-
-          const Spacer(),
 
           // Bottom Actions
           _NavItem(
@@ -230,6 +261,7 @@ class _NavItem extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
   final int? count;
+  final bool isLoading;
 
   const _NavItem({
     required this.icon,
@@ -237,6 +269,7 @@ class _NavItem extends StatelessWidget {
     this.isSelected = false,
     required this.onTap,
     this.count,
+    this.isLoading = false,
   });
 
   @override
@@ -275,7 +308,13 @@ class _NavItem extends StatelessWidget {
                   ),
                 ),
               ),
-              if (count != null && count! > 0)
+              if (isLoading)
+                const AppSkeleton(
+                  width: 24,
+                  height: 16,
+                  borderRadius: BorderRadius.all(Radius.circular(8)),
+                )
+              else if (count != null && count! > 0)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 6,
