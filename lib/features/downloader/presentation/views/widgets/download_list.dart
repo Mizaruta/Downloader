@@ -337,7 +337,7 @@ class _DownloadItemGridCard extends StatelessWidget {
       return Image.network(
         url,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const Center(
+        errorBuilder: (_, _, _) => const Center(
           child: Icon(Icons.movie_outlined, color: AppColors.textSecondary),
         ),
       );
@@ -355,7 +355,7 @@ class _DownloadItemGridCard extends StatelessWidget {
       return Image.file(
         file,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const Center(
+        errorBuilder: (_, _, _) => const Center(
           child: Icon(Icons.movie_outlined, color: AppColors.textSecondary),
         ),
       );
@@ -557,7 +557,7 @@ class _DownloadItemCard extends StatelessWidget {
         fit: BoxFit.cover,
         width: 48,
         height: 48,
-        errorBuilder: (_, __, ___) => const Icon(
+        errorBuilder: (_, _, _) => const Icon(
           Icons.movie_outlined,
           color: AppColors.textSecondary,
           size: 24,
@@ -579,7 +579,7 @@ class _DownloadItemCard extends StatelessWidget {
         fit: BoxFit.cover,
         width: 48,
         height: 48,
-        errorBuilder: (_, __, ___) => const Icon(
+        errorBuilder: (_, _, _) => const Icon(
           Icons.movie_outlined,
           color: AppColors.textSecondary,
           size: 24,

@@ -231,15 +231,18 @@ class FileOrganizationService {
     final parentName = p.basename(file.parent.path).toLowerCase();
 
     // Check filename for hints
-    if (fileName.contains('twitter') || fileName.contains('x.com'))
+    if (fileName.contains('twitter') || fileName.contains('x.com')) {
       return 'Twitter';
-    if (fileName.contains('youtube') || fileName.contains('youtu.be'))
+    }
+    if (fileName.contains('youtube') || fileName.contains('youtu.be')) {
       return 'YouTube';
+    }
     if (fileName.contains('instagram')) return 'Instagram';
     if (fileName.contains('tiktok')) return 'TikTok';
     if (fileName.contains('twitch')) return 'Twitch';
-    if (fileName.contains('reddit') || fileName.contains('redd.it'))
+    if (fileName.contains('reddit') || fileName.contains('redd.it')) {
       return 'Reddit';
+    }
     if (fileName.contains('pornhub')) return 'Pornhub';
     if (fileName.contains('xvideos')) return 'XVideos';
     if (fileName.contains('xhamster')) return 'XHamster';

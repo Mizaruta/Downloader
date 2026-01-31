@@ -95,11 +95,9 @@ class LibraryScannerService {
           var thumb = _findSidecarThumbnail(fixedItem.filePath!);
 
           // If no sidecar, generate one
-          if (thumb == null) {
-            thumb = await _thumbnailService.generateThumbnail(
-              fixedItem.filePath!,
-            );
-          }
+          thumb ??= await _thumbnailService.generateThumbnail(
+            fixedItem.filePath!,
+          );
 
           if (thumb != null) {
             fixedItem = fixedItem.copyWith(thumbnailUrl: thumb);
@@ -197,15 +195,17 @@ class LibraryScannerService {
       try {
         final uri = Uri.parse(sourceUrl);
         final host = uri.host.toLowerCase();
-        if (host.contains('youtube') || host.contains('youtu.be'))
+        if (host.contains('youtube') || host.contains('youtu.be')) {
           return 'youtube';
+        }
         if (host.contains('twitter') || host == 'x.com') return 'twitter';
         if (host.contains('instagram')) return 'instagram';
         if (host.contains('tiktok')) return 'tiktok';
         if (host.contains('twitch')) return 'twitch';
         if (host.contains('kick')) return 'kick';
-        if (host.contains('reddit') || host.contains('redd.it'))
+        if (host.contains('reddit') || host.contains('redd.it')) {
           return 'reddit';
+        }
         if (host.contains('pornhub')) return 'pornhub';
         if (host.contains('xvideos')) return 'xvideos';
         if (host.contains('xhamster')) return 'xhamster';
