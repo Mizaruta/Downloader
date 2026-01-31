@@ -1,0 +1,63 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+
+# Flutter/Dart/Pub
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+
+# Android
+android/gradle/wrapper/gradle-wrapper.properties
+android/local.properties
+android/**/generated/
+android/**/gradle-wrapper.jar
+android/.gradle
+android/captures/
+android/gradlew
+android/gradlew.bat
+
+# iOS
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/Generated.xcconfig
+ios/Flutter/app.flx
+ios/Flutter/app.zip
+ios/Flutter/flutter_assets/
+ios/ServiceDefinitions.json
+ios/Runner/GeneratedPluginRegistrant.*
+
+# Windows
+windows/flutter/ephemeral/
+windows/flutter/generated_plugin_registrant.cc
+windows/flutter/generated_plugin_registrant.h
+windows/runner/resources/*_plugin_registrant.cc
+
+# Visual Studio / IDEs
+.idea/
+.vscode/launch.json
+*.iml
+*.ipr
+*.iws
+
+# Extension - Explicitly INCLUDED (No exclusion rules for .zip/.xpi)
+# We want modern_downloader.zip to be tracked by Git.
+
+# Exceptions (Files we DEFINITELY want to track)
+!extension_version.json
+!extension/firefox/
+
+bin/*.exe
+
+bin/*.zip

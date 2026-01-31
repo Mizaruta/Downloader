@@ -1,0 +1,12 @@
+{
+    "addons": {
+        "modern-downloader@Mizaruta.com": {
+            "updates": [
+                {
+                    "version": "2.0",
+                    "update_link": "https://github.com/Mizaruta/Downloader_Old/releases/latest/download/modern_downloader.zip"
+                }
+            ]
+        }
+    }
+}

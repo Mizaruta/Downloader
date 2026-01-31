@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Downloader</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+    <div class="header">
+        <div class="title-row">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Modern Downloader</span>
+        </div>
+        <!-- Status Indicator Icon Only -->
+        <div id="status-indicator" class="status-dot disconnected" title="Disconnected"></div>
+    </div>
+
+    <div class="content">
+        <div class="section-title">Recent Downloads</div>
+        <div id="downloads-list" class="downloads-list">
+            <!-- Items injected by JS -->
+            <div class="empty-state">No active downloads</div>
+        </div>
+    </div>
+
+    <!-- Consolidated Footer with Settings -->
+    <div class="footer-settings">
+        <div class="settings-row">
+            <div class="setting-item">
+                <label for="browser-select">Browser</label>
+                <select id="browser-select"
+                    style="width: 100px; padding: 2px; border-radius: 4px; background: #333; color: white; border: 1px solid #444;">
+                    <option value="auto">Auto (Default)</option>
+                    <option value="firefox">Firefox (Force)</option>
+                    <option value="brave">Brave</option>
+                    <option value="chrome">Chrome</option>
+                    <option value="edge">Edge</option>
+                    <option value="opera">Opera</option>
+                    <option value="vivaldi">Vivaldi</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <label for="port-input">Port</label>
+                <input type="number" id="port-input" value="6969" placeholder="6969">
+            </div>
+            <div class="setting-item checkbox-item">
+                <input type="checkbox" id="cookies-toggle" checked>
+                <label for="cookies-toggle">Auto-Cookies</label>
+            </div>
+        </div>
+        <div id="connection-msg" class="connection-msg">Offline</div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+
+</html>
