@@ -305,7 +305,12 @@ class YtDlpSource {
     LoggerService.i('YtDlpSource: Running: $ytDlp ${args.join(' ')}');
 
     // Start process
-    final process = await Process.start(ytDlp, args, runInShell: true);
+    final process = await Process.start(
+      ytDlp,
+      args,
+      runInShell: true,
+      environment: {'PYTHONIOENCODING': 'utf-8'},
+    );
     _downloadProcesses[id] = process;
 
     LoggerService.i('Process started with PID: ${process.pid}');
@@ -314,7 +319,9 @@ class YtDlpSource {
     StringBuffer errorBuffer = StringBuffer();
     StringBuffer outputBuffer = StringBuffer();
 
-    process.stderr.transform(utf8.decoder).listen((data) {
+    process.stderr.transform(const Utf8Decoder(allowMalformed: true)).listen((
+      data,
+    ) {
       errorBuffer.write(data);
       LoggerService.w('yt-dlp stderr: $data');
       if (detectedException != null) return;
@@ -352,7 +359,7 @@ class YtDlpSource {
 
     await for (final line
         in process.stdout
-            .transform(utf8.decoder)
+            .transform(const Utf8Decoder(allowMalformed: true))
             .transform(const LineSplitter())) {
       outputBuffer.writeln(line); // Capture full log
       LoggerService.debug('yt-dlp: $line');

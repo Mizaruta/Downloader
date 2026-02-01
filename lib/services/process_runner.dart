@@ -23,13 +23,20 @@ class ProcessRunner {
     String? workingDirectory,
   }) async {
     LoggerService.debug('Running process: $executable ${arguments.join(' ')}');
-    return await Process.run(
+    final result = await Process.run(
       executable,
       arguments,
       workingDirectory: workingDirectory,
-      runInShell: true, // Use shell to resolve PATH
-      stdoutEncoding: utf8,
-      stderrEncoding: utf8,
+      runInShell: true,
+      stdoutEncoding: null, // Get raw bytes
+      stderrEncoding: null, // Get raw bytes
+    );
+
+    return ProcessResult(
+      result.pid,
+      result.exitCode,
+      utf8.decode(result.stdout as List<int>, allowMalformed: true),
+      utf8.decode(result.stderr as List<int>, allowMalformed: true),
     );
   }
 

@@ -54,6 +54,7 @@ class DownloadListNotifier
   final Ref _ref;
 
   final List<DownloadRequest> _queue = [];
+  bool _isProcessingQueue = false;
 
   DownloadListNotifier(this._repository, this._ref)
     : super(const AsyncValue.loading()) {
@@ -175,6 +176,38 @@ class DownloadListNotifier
     await _processQueue();
   }
 
+  Future<void> startDownloadsBatch(List<String> urls) async {
+    final settings = _ref.read(settingsProvider);
+
+    for (final url in urls) {
+      final request = DownloadRequest(
+        url: url,
+        outputFolder: settings.outputFolder.isNotEmpty
+            ? settings.outputFolder
+            : null,
+        audioOnly: settings.audioOnly,
+        preferredQuality: settings.preferredQuality,
+        outputFormat: settings.outputFormat,
+        audioFormat: settings.audioFormat,
+        embedThumbnail: settings.embedThumbnail,
+        embedSubtitles: settings.embedSubtitles,
+        twitterIncludeReplies: settings.twitterIncludeReplies,
+        twitchDownloadChat: settings.twitchDownloadChat,
+        twitchQuality: settings.twitchQuality,
+        cookiesFilePath: settings.cookiesFilePath.isNotEmpty
+            ? settings.cookiesFilePath
+            : null,
+        useTorProxy: settings.useTorProxy,
+        concurrentFragments: settings.concurrentFragments,
+        cookieBrowser: settings.cookieBrowser,
+        organizeBySite: settings.organizeBySite,
+      );
+      _queue.add(request);
+    }
+
+    await _processQueue();
+  }
+
   Future<void> deleteDownload(String id) async {
     await _repository.deleteDownload(id);
     state.whenData((currentList) {
@@ -223,22 +256,34 @@ class DownloadListNotifier
   }
 
   Future<void> _processQueue() async {
-    final currentList = state.valueOrNull ?? [];
-    final activeCount = currentList
-        .where(
-          (i) =>
-              i.status == DownloadStatus.downloading ||
-              i.status == DownloadStatus.extracting,
-        )
-        .length;
+    if (_isProcessingQueue) return;
+    _isProcessingQueue = true;
 
-    final settings = _ref.read(settingsProvider);
-    final maxConcurrent = settings.maxConcurrent;
+    try {
+      while (_queue.isNotEmpty) {
+        final currentList = state.valueOrNull ?? [];
+        final activeCount = currentList
+            .where(
+              (i) =>
+                  i.status == DownloadStatus.downloading ||
+                  i.status == DownloadStatus.extracting,
+            )
+            .length;
 
-    if (activeCount < maxConcurrent && _queue.isNotEmpty) {
-      final nextRequest = _queue.removeAt(0);
-      await _repository.startDownload(nextRequest);
-      _processQueue();
+        final settings = _ref.read(settingsProvider);
+        final maxConcurrent = settings.maxConcurrent;
+
+        if (activeCount < maxConcurrent) {
+          final nextRequest = _queue.removeAt(0);
+          await _repository.startDownload(nextRequest);
+          // After starting, we continue the loop to check if we can start more
+        } else {
+          // Max concurrent reached, stop for now
+          break;
+        }
+      }
+    } finally {
+      _isProcessingQueue = false;
     }
   }
 }

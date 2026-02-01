@@ -8,6 +8,7 @@ import '../ui/settings/output_settings_view.dart';
 import '../ui/settings/advanced_settings_view.dart';
 import '../ui/settings/performance_settings_view.dart';
 import '../ui/settings/system_settings_view.dart';
+import '../../features/link_grabber/presentation/screens/link_grabber_screen.dart';
 
 // Keys for navigation
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -48,6 +49,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/settings/system',
             builder: (context, state) => const SystemSettingsView(),
+          ),
+          GoRoute(
+            path: '/link-grabber',
+            builder: (context, state) => const LinkGrabberScreen(),
           ),
         ],
       ),

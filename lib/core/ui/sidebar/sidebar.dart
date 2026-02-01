@@ -163,6 +163,13 @@ class AppSidebar extends ConsumerWidget {
                         isSelected: statusFilter == DownloadStatusFilter.failed,
                         onTap: () => setStatus(DownloadStatusFilter.failed),
                       ),
+                      const Gap(AppSpacing.s),
+                      _NavItem(
+                        icon: Icons.auto_awesome_motion_rounded,
+                        label: "Link Grabber",
+                        isSelected: location == '/link-grabber',
+                        onTap: () => context.go('/link-grabber'),
+                      ),
                     ],
                   ),
                   const Gap(AppSpacing.m),

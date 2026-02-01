@@ -23,8 +23,10 @@ class TitleCleanerService {
     // Remove pipes and other separators often used in YouTube titles
     cleaned = cleaned.replaceAll('|', '-');
 
+    // Remove strictly restricted Windows characters: < > : " / \ | ? *
+    cleaned = cleaned.replaceAll(RegExp(r'[<>:"/\\|?*]'), '');
+
     // Remove technical suffixes (yt-dlp fragments)
-    // matches things like .fhls-123 or .f137
     cleaned = cleaned.replaceAll(RegExp(r'\.fhls-\d+'), '');
     cleaned = cleaned.replaceAll(RegExp(r'\.f\d+'), '');
     cleaned = cleaned.replaceAll('.part', '');
@@ -35,6 +37,11 @@ class TitleCleanerService {
 
     // Trim
     cleaned = cleaned.trim();
+
+    // Truncate to avoid path length issues in Windows (260 char limit total, let's keep filename < 200)
+    if (cleaned.length > 200) {
+      cleaned = '${cleaned.substring(0, 197)}...';
+    }
 
     if (cleaned != title) {
       LoggerService.debug('Title cleaned: "$title" -> "$cleaned"');
