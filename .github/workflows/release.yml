@@ -39,4 +39,4 @@ jobs:
         with:
           files: |
             ModernDownloader-Windows-Portable.zip
-            installer/ModernDownloader-Setup-${{ github.ref_name }}.exe
+            ModernDownloader-Setup-${{ github.ref_name }}.exe
