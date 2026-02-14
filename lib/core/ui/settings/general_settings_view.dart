@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../design_system/foundation/colors.dart';
@@ -59,6 +60,13 @@ class GeneralSettingsView extends ConsumerWidget {
               children:
                   [
                         const SectionTitle("General"),
+                        ActionTile(
+                          title: "Smart Organization (AI Curator)",
+                          subtitle: "Manage auto-sort rules & smart guessing",
+                          icon: Icons.auto_awesome_motion,
+                          onTap: () =>
+                              context.push('/settings/smart_organizer'),
+                        ),
                         SwitchTile(
                           title: "Audio Only",
                           subtitle: "Extract audio only (MP3) from videos",

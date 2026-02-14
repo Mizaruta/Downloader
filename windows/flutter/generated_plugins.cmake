@@ -3,11 +3,15 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  desktop_drop
   local_notifier
+  media_kit_libs_windows_video
+  media_kit_video
   protocol_handler_windows
   screen_retriever_windows
   tray_manager
   video_player_win
+  volume_controller
   window_manager
 )
 

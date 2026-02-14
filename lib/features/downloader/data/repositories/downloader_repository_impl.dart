@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:uuid/uuid.dart';
 import '../../domain/entities/download_item.dart';
@@ -14,14 +13,19 @@ import '../services/library_scanner_service.dart';
 import '../../../../core/logger/logger_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/duplicate_detector_service.dart';
+import '../../../../core/services/disk_space_service.dart';
+import '../../../../core/utils/format_utils.dart';
 import '../datasources/persistence_service.dart';
 import '../../../../core/services/title_cleaner_service.dart';
+import '../../../../core/plugins/plugin_manager.dart';
+import '../../../../core/plugins/plugin_interface.dart';
 
 class DownloaderRepositoryImpl implements IDownloaderRepository {
   final YtDlpSource _source;
   final GalleryDlSource _galleryDlSource;
   final PersistenceService _persistenceService;
   final LibraryScannerService _libraryScanner;
+  final PluginManager _pluginManager;
 
   final _controller = StreamController<DownloadItem>.broadcast();
   final _activeDownloads = <String, DownloadItem>{};
@@ -32,6 +36,7 @@ class DownloaderRepositoryImpl implements IDownloaderRepository {
     this._galleryDlSource,
     this._persistenceService,
     this._libraryScanner,
+    this._pluginManager,
   ) {
     _loadInitialData();
   }
@@ -162,10 +167,7 @@ class DownloaderRepositoryImpl implements IDownloaderRepository {
   }
 
   String _formatBytes(int bytes) {
-    if (bytes <= 0) return "0 B";
-    const suffixes = ["B", "KB", "MB", "GB", "TB"];
-    var i = (log(bytes) / log(1024)).floor();
-    return '${(bytes / pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
+    return FormatUtils.formatBytes(bytes);
   }
 
   @override
@@ -248,7 +250,7 @@ class DownloaderRepositoryImpl implements IDownloaderRepository {
           try {
             // 2. Pre-flight Check: Disk Space
             if (retryCount == 0) {
-              await _checkDiskSpace();
+              await DiskSpaceService.checkDiskSpace();
             }
 
             // 3. Status Update
@@ -279,21 +281,21 @@ class DownloaderRepositoryImpl implements IDownloaderRepository {
               );
               final String? fetchedTitle = metadata['title'];
               finalThumbnail = metadata['thumbnail'];
+              final String? videoId = metadata['id'];
 
               // Platform-specific title logic...
               if (currentRequest.url.contains('twitter.com') ||
                   currentRequest.url.contains('x.com')) {
                 final String? uploader =
                     metadata['uploader'] ?? metadata['uploader_id'];
-                final String? tweetId = metadata['id'];
                 if (fetchedTitle == null ||
                     fetchedTitle.isEmpty ||
-                    fetchedTitle == tweetId ||
+                    fetchedTitle == videoId ||
                     fetchedTitle.contains('twitter.com')) {
-                  if (uploader != null && tweetId != null) {
-                    finalTitle = '$uploader - $tweetId';
-                  } else if (tweetId != null) {
-                    finalTitle = 'Tweet $tweetId';
+                  if (uploader != null && videoId != null) {
+                    finalTitle = '$uploader - $videoId';
+                  } else if (videoId != null) {
+                    finalTitle = 'Tweet $videoId';
                   }
                 } else {
                   finalTitle = fetchedTitle;
@@ -301,7 +303,7 @@ class DownloaderRepositoryImpl implements IDownloaderRepository {
               } else if (fetchedTitle != null &&
                   fetchedTitle.isNotEmpty &&
                   fetchedTitle != 'null' &&
-                  fetchedTitle != metadata['id']) {
+                  fetchedTitle != videoId) {
                 finalTitle = fetchedTitle;
               }
 
@@ -312,9 +314,21 @@ class DownloaderRepositoryImpl implements IDownloaderRepository {
                   thumbnailUrl: finalThumbnail,
                 ),
               );
-              currentRequest = currentRequest.copyWith(
-                customFilename: '$finalTitle.%(ext)s',
-              );
+
+              // Build filename with unique ID to prevent false duplicates
+              // e.g. "My Video [abc123].mp4" instead of "My Video.mp4"
+              if (videoId != null && videoId.isNotEmpty) {
+                final cleanId = videoId.replaceAll(RegExp(r'[<>:"/\\|?*]'), '');
+                currentRequest = currentRequest.copyWith(
+                  customFilename: '$finalTitle [$cleanId].%(ext)s',
+                );
+              } else {
+                // No ID available — derive a short hash from the URL as unique suffix
+                final urlHash = currentRequest.url.hashCode.toRadixString(36);
+                currentRequest = currentRequest.copyWith(
+                  customFilename: '$finalTitle [$urlHash].%(ext)s',
+                );
+              }
             } catch (e) {
               LoggerService.w(
                 'Metadata extraction failed (retry possible): $e',
@@ -326,6 +340,11 @@ class DownloaderRepositoryImpl implements IDownloaderRepository {
               }
               finalTitle = TitleCleanerService.deriveTitleFromUrl(
                 currentRequest.url,
+              );
+              // Ensure unique filename even without metadata
+              final urlHash = currentRequest.url.hashCode.toRadixString(36);
+              currentRequest = currentRequest.copyWith(
+                customFilename: '$finalTitle [$urlHash].%(ext)s',
               );
             }
 
@@ -380,6 +399,35 @@ class DownloaderRepositoryImpl implements IDownloaderRepository {
             NotificationService().showDownloadComplete(
               _activeDownloads[id]!.title ?? 'Download Complete',
             );
+
+            // 7. Plugin Processing
+            try {
+              final pluginResult = await _pluginManager.onDownloadComplete(
+                PluginDownloadEvent(
+                  downloadId: id,
+                  url: currentRequest.url,
+                  filePath: _activeDownloads[id]!.filePath,
+                  title: _activeDownloads[id]!.title,
+                  source: _activeDownloads[id]!.source,
+                  progress: 1.0,
+                ),
+              );
+
+              if (pluginResult != null) {
+                _update(
+                  _activeDownloads[id]!.copyWith(
+                    filePath:
+                        pluginResult.newFilePath ??
+                        _activeDownloads[id]!.filePath,
+                    title: pluginResult.newTitle ?? _activeDownloads[id]!.title,
+                  ),
+                );
+              }
+            } catch (pluginError) {
+              LoggerService.e('Plugin processing failed', pluginError);
+            }
+
+            // Note: stats recording is handled by the provider layer
             return;
           } catch (e) {
             // Rethrow if it's a fatal non-retryable error (like Disk Space)
@@ -606,7 +654,8 @@ class DownloaderRepositoryImpl implements IDownloaderRepository {
     if (url.contains('kick.com')) {
       return 'Kick Video';
     }
-    return 'Video';
+    // For unknown sources, derive a clean title from the URL
+    return TitleCleanerService.deriveTitleFromUrl(url);
   }
 
   String _shouldUpdateTitle(String? current, String? proposed) {
@@ -624,31 +673,6 @@ class DownloaderRepositoryImpl implements IDownloaderRepository {
       }
     }
     return proposed;
-  }
-
-  Future<void> _checkDiskSpace() async {
-    if (!Platform.isWindows) return;
-    try {
-      final userProfile = Platform.environment['USERPROFILE'] ?? 'C:';
-      final drive = userProfile.split(':')[0];
-      final result = await Process.run('powershell', [
-        '-Command',
-        'Get-Volume -DriveLetter $drive | Select-Object -ExpandProperty SizeRemaining',
-      ]);
-      if (result.exitCode == 0) {
-        final bytes = int.tryParse(result.stdout.toString().trim());
-        if (bytes != null) {
-          if (bytes < 2 * 1024 * 1024 * 1024) {
-            throw Exception(
-              'Low Disk Space: ${_formatBytes(bytes)} free. Min 2GB required.',
-            );
-          }
-          LoggerService.i('Disk Space Check: ${_formatBytes(bytes)} free (OK)');
-        }
-      }
-    } catch (e) {
-      if (e.toString().contains('Low Disk Space')) rethrow;
-    }
   }
 
   @override

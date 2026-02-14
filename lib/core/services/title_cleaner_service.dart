@@ -32,6 +32,10 @@ class TitleCleanerService {
     cleaned = cleaned.replaceAll('.part', '');
     cleaned = cleaned.replaceAll('.ytdl', '');
 
+    // Remove [id] suffixes added for filesystem uniqueness
+    // Matches patterns like [abc123], [dQw4w9WgXcQ], [1234567890], [z8f3k]
+    cleaned = cleaned.replaceAll(RegExp(r'\s*\[[a-zA-Z0-9_-]+\]\s*$'), '');
+
     // Collapse multiple spaces
     cleaned = cleaned.replaceAll(RegExp(r'\s+'), ' ');
 

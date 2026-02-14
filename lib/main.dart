@@ -7,6 +7,8 @@ import 'core/platform/platform_info.dart';
 import 'core/providers/settings_provider.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:modern_downloader/l10n/app_localizations.dart';
 
 import 'package:modern_downloader/core/services/single_instance_service.dart';
 import 'package:protocol_handler/protocol_handler.dart';
@@ -16,11 +18,14 @@ import 'package:modern_downloader/core/services/notification_service.dart';
 import 'package:modern_downloader/core/services/clipboard_service.dart';
 import 'package:modern_downloader/core/services/local_server_service.dart';
 import 'package:modern_downloader/features/downloader/data/datasources/startup_cleanup_service.dart';
+import 'package:modern_downloader/core/services/ytdlp_updater_service.dart';
+import 'package:modern_downloader/services/binary_locator.dart';
 import 'dart:io';
+import 'package:media_kit/media_kit.dart';
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  MediaKit.ensureInitialized();
   // Initialize SharedPreferences BEFORE anything else
   final prefsInstance = await SharedPreferences.getInstance();
   initPrefs(prefsInstance); // Initialize global prefs holder
@@ -75,6 +80,12 @@ void main(List<String> args) async {
 
   // Listen for deep links
   protocolHandler.addListener(_ProtocolListener(container));
+
+  // Auto-update yt-dlp (non-blocking, fire-and-forget)
+  final autoUpdate = prefsInstance.getBool('auto_update_ytdlp') ?? true;
+  if (autoUpdate) {
+    YtDlpUpdaterService(BinaryLocator()).checkForUpdate();
+  }
 
   runApp(
     UncontrolledProviderScope(
@@ -218,6 +229,14 @@ class _ModernDownloaderAppState extends ConsumerState<ModernDownloaderApp>
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
+      locale: Locale(settings.locale),
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: router,
     );
   }

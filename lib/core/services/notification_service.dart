@@ -43,6 +43,21 @@ class NotificationService {
     );
   }
 
+  Future<void> showBatchComplete(int count, String totalSize) async {
+    _show(
+      title: 'Batch Download Complete',
+      body: '$count downloads finished — $totalSize total',
+    );
+  }
+
+  Future<void> showUpdateAvailable(String version) async {
+    _show(title: 'yt-dlp Updated', body: 'Updated to $version');
+  }
+
+  Future<void> showError(String title, String details) async {
+    _show(title: title, body: details);
+  }
+
   Future<void> _show({required String title, required String body}) async {
     try {
       // Access prefs directly since NotificationService is a singleton

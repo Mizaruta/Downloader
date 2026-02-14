@@ -1,19 +1,36 @@
 <div align="center">
 
-# 🚀 Modern Downloader
+<img src="extension/chrome/icons/icon128.png" alt="Logo" width="128" height="128" />
 
-### Téléchargeur de médias moderne, rapide et respectueux de la confidentialité  
-### Modern, fast & privacy-focused media downloader
+# Modern Downloader
 
-[![Stars](https://img.shields.io/github/stars/Mizaruta/Downloader?style=flat)](https://github.com/Mizaruta/Downloader/stargazers)
-[![Release](https://img.shields.io/github/v/release/Mizaruta/Downloader)](https://github.com/Mizaruta/Downloader/releases)
-[![Last Commit](https://img.shields.io/github/last-commit/Mizaruta/Downloader)](https://github.com/Mizaruta/Downloader/commits/main)
-[![License](https://img.shields.io/github/license/Mizaruta/Downloader)](LICENSE)
-![Platform](https://img.shields.io/badge/platform-Windows-blue)
-![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter)
-![Dart](https://img.shields.io/badge/Dart-3.10+-0175C2?logo=dart)
+**Téléchargeur de médias moderne, rapide et respectueux de la vie privée**  
+*Modern, fast & privacy-focused media downloader*
+
+[![Stars](https://img.shields.io/github/stars/Mizaruta/Downloader?style=for-the-badge&logo=github&color=blueviolet)](https://github.com/Mizaruta/Downloader/stargazers)
+[![Release](https://img.shields.io/github/v/release/Mizaruta/Downloader?style=for-the-badge&color=orange)](https://github.com/Mizaruta/Downloader/releases)
+[![License](https://img.shields.io/github/license/Mizaruta/Downloader?style=for-the-badge&color=green)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Windows-blue?style=for-the-badge&logo=windows)](https://www.microsoft.com/windows)
+
+[![Flutter](https://img.shields.io/badge/Built%20with-Flutter-02569B?style=flat-square&logo=flutter)](https://flutter.dev)
+[![Dart](https://img.shields.io/badge/Language-Dart-0175C2?style=flat-square&logo=dart)](https://dart.dev)
 
 </div>
+
+---
+
+## 📖 Table of Contents / Table des matières
+
+- [🇫🇷 Français](#-français)
+  - [Présentation](#-présentation)
+  - [Fonctionnalités](#-fonctionnalités)
+  - [Installation](#-installation)
+- [🇬🇧 English](#-english)
+  - [Overview](#-overview)
+  - [Features](#-features)
+  - [Installation](#-installation-1)
+- [🛠️ Tech Stack](#-tech-stack)
+- [🤝 Contributing](#-contributing)
 
 ---
 
@@ -21,184 +38,119 @@
 
 ### ✨ Présentation
 
-**Modern Downloader** est un téléchargeur de médias **puissant**, **élégant** et **axé sur la confidentialité**, conçu avec **Flutter pour Windows**.
+**Modern Downloader** est une application de bureau native conçue avec **Flutter** pour offrir une expérience de téléchargement **premium** sur Windows.
 
-Il propose une alternative **premium et conviviale** aux outils en ligne de commande comme `yt-dlp`, en centralisant le téléchargement de :
+Il remplace les lignes de commande complexes par une interface graphique élégante et fluide, vous permettant de télécharger facilement :
+- 🎥 **Vidéos** (YouTube, Twitch, etc.)
+- 🎵 **Audio** (MP3, AAC)
+- 🖼️ **Galeries d'images** (Pinterest, Twitter, etc.)
 
-- 🎥 Vidéos
-- 🎵 Audio (MP3 / AAC)
-- 🖼️ Galeries d’images  
+### ⚡ Fonctionnalités
 
-Le tout via une **interface moderne, fluide et intuitive**.
-
----
-
-### ⚡ Fonctionnalités principales
-
-🌍 **Support universel**  
-Compatible avec **1000+ sites** grâce à `yt-dlp` et `gallery-dl`.
-
-⚡ **Téléchargements optimisés**  
-Téléchargement multi-threadé via **aria2c**.
-
-🔒 **Confidentialité avancée**
-- Support **Tor (SOCKS5)**
-- Gestion des cookies
-- Aucune télémétrie
-
-🎨 **Interface premium**
-- Design inspiré d’iOS
-- Glassmorphism (flou gaussien)
-- Animations fluides
-- Mode sombre natif
-
-🔮 **Roadmap**
-- 🧠 God Mode (monitoring des cookies)
-- 📱 Support Android complet
-
----
+| Catégorie | Détails |
+|-----------|---------|
+| **🌍 Universel** | Supporte **1000+ sites** via l'intégration de `yt-dlp` et `gallery-dl`. |
+| **🚀 Performance** | Téléchargements ultra-rapides multi-threadés grâce au moteur **aria2c**. |
+| **🛡️ Confidentialité** | Support natif de **Tor (SOCKS5)**, gestion isolée des cookies, zéro télémétrie. |
+| **🎨 Design** | Interface "Glassmorphism" moderne, mode sombre natif, animations fluides (60fps). |
+| **🔧 Outils** | Conversion automatique (FFmpeg), extraction de métadonnées, intégration des sous-titres. |
 
 ### 🚀 Installation
 
-#### Prérequis
-- Windows **10 / 11**
-- Flutter configuré pour Windows
-- Dart SDK `^3.10.7`
+**Prérequis :**
+- Windows 10 ou 11
+- [Flutter SDK](https://docs.flutter.dev/get-started/install/windows) installé
+- [Git](https://git-scm.com/) installé
 
 ```bash
-git clone <url_du_projet>
-cd modern_downloader
+# 1. Cloner le projet
+git clone https://github.com/Mizaruta/Downloader.git
+cd Downloader
+
+# 2. Installer les dépendances
 flutter pub get
+
+# 3. Lancer l'application
 flutter run -d windows
-📥 Utilisation
-Coller l’URL d’un média
+```
 
-Choisir le format et la qualité
+> **Note :** Pour générer un exécutable release : `flutter build windows`
 
-Cliquer sur Télécharger
+---
 
-Suivre la progression en temps réel
+## 🇬🇧 English
 
-⚙️ Paramètres disponibles dans l’UI :
+### ✨ Overview
 
-Dossier de destination
+**Modern Downloader** is a native desktop application built with **Flutter** to provide a **premium** downloading experience on Windows.
 
-Qualité par défaut
+It replaces complex command-line tools with a sleek and smooth GUI, allowing you to easily download:
+- 🎥 **Videos** (YouTube, Twitch, etc.)
+- 🎵 **Audio** (MP3, AAC)
+- 🖼️ **Image Galleries** (Pinterest, Twitter, etc.)
 
-Thèmes
+### ⚡ Features
 
-Proxy Tor
+| Category | Details |
+|----------|---------|
+| **🌍 Universal** | Supports **1000+ websites** via integrated `yt-dlp` and `gallery-dl`. |
+| **🚀 Performance** | Ultra-fast multi-threaded downloads powered by the **aria2c** engine. |
+| **🛡️ Privacy** | Native **Tor (SOCKS5)** support, isolated cookie management, zero telemetry. |
+| **🎨 Design** | Modern "Glassmorphism" UI, native dark mode, smooth 60fps animations. |
+| **🔧 Tools** | Automatic conversion (FFmpeg), metadata extraction, subtitle integration. |
 
-🇬🇧 English
-✨ Overview
-Modern Downloader is a powerful, beautiful, and privacy-focused media downloader built with Flutter for Windows.
+### 🚀 Installation
 
-It is designed as a premium GUI alternative to command-line tools like yt-dlp, bringing all media downloads into a single, modern desktop application.
+**Requirements:**
+- Windows 10 or 11
+- [Flutter SDK](https://docs.flutter.dev/get-started/install/windows) installed
+- [Git](https://git-scm.com/) installed
 
-Supported content:
+```bash
+# 1. Clone the repository
+git clone https://github.com/Mizaruta/Downloader.git
+cd Downloader
 
-🎥 Videos
-
-🎵 Audio (MP3 / AAC)
-
-🖼️ Image galleries
-
-⚡ Key Features
-🌍 Universal support
-Compatible with 1000+ websites using yt-dlp and gallery-dl.
-
-⚡ High-speed downloads
-Multi-threaded downloads powered by aria2c.
-
-🔒 Privacy first
-
-Tor (SOCKS5) proxy support
-
-Cookie management
-
-No tracking or telemetry
-
-🎨 Premium UI
-
-iOS-inspired design
-
-Glassmorphism blur effects
-
-Smooth animations
-
-Native dark mode
-
-🔮 Roadmap
-
-🧠 God Mode (cookie health monitoring)
-
-📱 Full Android support
-
-🚀 Installation
-Requirements
-Windows 10 / 11
-
-Flutter configured for Windows
-
-Dart SDK ^3.10.7
-
-git clone <url_du_projet>
-cd modern_downloader
+# 2. Install dependencies
 flutter pub get
+
+# 3. Run the app
 flutter run -d windows
-📥 Usage
-Paste a media URL
+```
 
-Select format & quality
+> **Note:** To build a release executable: `flutter build windows`
 
-Click Download
+---
 
-Monitor progress with real-time logs
+## 🛠️ Tech Stack
 
-⚙️ Settings available in the UI:
+Everything that makes this project tick:
 
-Download directory
+- **Frontend:** [Flutter](https://flutter.dev) (Dart)
+- **State Management:** [Riverpod](https://riverpod.dev)
+- **Navigation:** [GoRouter](https://pub.dev/packages/go_router)
+- **Core Engines:**
+  - `yt-dlp` (Video/Audio extraction)
+  - `gallery-dl` (Image extraction)
+  - `aria2c` (Download acceleration)
+  - `FFmpeg` (Media conversion)
 
-Default quality
+## 🤝 Contributing
 
-Themes
+Contributions are perfectly welcome! ❤️
 
-Tor proxy configuration
+1.  **Fork** the repository
+2.  Create your **Feature Branch** (`git checkout -b feature/AmazingFeature`)
+3.  **Commit** your changes (`git commit -m 'Add some AmazingFeature'`)
+4.  **Push** to the branch (`git push origin feature/AmazingFeature`)
+5.  Open a **Pull Request**
 
-🛠️ Tech Stack
-Flutter (Windows)
-
-Dart
-
-Riverpod (state management)
-
-Go Router (navigation)
-
-yt-dlp / gallery-dl
-
-aria2c / FFmpeg
-
-🧪 Tests
-flutter test
-🤝 Contributing
-Contributions are welcome ❤️
-
-Fork the project
-
-Create a branch feature/AmazingFeature
-
-Commit your changes
-
-Open a Pull Request
-
-📄 Licence / License
-📜 MIT License
-
-👤 Auteur / Author
-Mizaruta / Downloader
-🚧 Active development — v1.0.0+1
+---
 
 <div align="center">
-⭐ Support the project by starring it on GitHub! ⭐
 
-</div> ```
+**Mizaruta / Downloader** © 2023-2026
+
+[![License](https://img.shields.io/github/license/Mizaruta/Downloader?style=flat-square)](LICENSE)
+
+</div>

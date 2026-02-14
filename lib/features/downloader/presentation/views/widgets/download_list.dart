@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:modern_downloader/core/ui/widgets/custom_empty_state.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -58,24 +60,10 @@ class DownloadList extends ConsumerWidget {
       ),
       data: (downloads) {
         if (downloads.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.inbox,
-                  size: 48,
-                  color: AppColors.textDisabled,
-                ),
-                const Gap(AppSpacing.m),
-                Text(
-                  "No downloads found",
-                  style: AppTypography.body.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
+          return const CustomEmptyState(
+            title: "No downloads found",
+            description: "Your download list is empty.",
+            icon: Icons.inbox_outlined,
           );
         }
 
@@ -183,7 +171,7 @@ class DownloadList extends ConsumerWidget {
   }
 }
 
-class _DownloadItemGridCard extends StatelessWidget {
+class _DownloadItemGridCard extends StatefulWidget {
   final DownloadItem item;
   final bool isSelected;
   final VoidCallback onTap;
@@ -199,130 +187,163 @@ class _DownloadItemGridCard extends StatelessWidget {
   });
 
   @override
+  State<_DownloadItemGridCard> createState() => _DownloadItemGridCardState();
+}
+
+class _DownloadItemGridCardState extends State<_DownloadItemGridCard> {
+  bool _isHovering = false;
+
+  @override
   Widget build(BuildContext context) {
-    final bool isDownloading = item.status == DownloadStatus.downloading;
+    final bool isDownloading = widget.item.status == DownloadStatus.downloading;
 
-    return AppCard(
-      onTap: onTap,
-      padding: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Preview Area
-          Expanded(
-            flex: 3,
-            child: Container(
-              color: AppColors.background,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (item.thumbnailUrl != null)
-                    _buildThumbnailImage(item.thumbnailUrl!)
-                  else
-                    const Center(
-                      child: Icon(
-                        Icons.movie_outlined,
-                        color: AppColors.textSecondary,
-                        size: 48,
-                      ),
-                    ),
-
-                  // Status Overlay
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: StatusBadge(status: item.status, error: item.error),
-                  ),
-
-                  // Progress Overlay
-                  if (isDownloading)
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: LinearProgressIndicator(
-                        value: item.progress > 0 ? item.progress : null,
-                        backgroundColor: Colors.transparent,
-                        color: AppColors.primary,
-                        minHeight: 4,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-
-          // Info Area
-          Expanded(
-            flex: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.title ?? "Unknown Title",
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.label.copyWith(
-                      color: isSelected
-                          ? AppColors.primary
-                          : AppColors.textPrimary,
-                    ),
-                  ),
-                  const Spacer(),
-                  // Meta info
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.source,
-                              style: AppTypography.mono.copyWith(fontSize: 10),
+    // Performance: Isolate repaints for progress bars
+    return RepaintBoundary(
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovering = true),
+        onExit: (_) => setState(() => _isHovering = false),
+        cursor: SystemMouseCursors.click,
+        child: AnimatedScale(
+          scale: _isHovering ? 1.02 : 1.0,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          child: AppCard(
+            onTap: widget.onTap,
+            padding: EdgeInsets.zero,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Preview Area
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    color: AppColors.background,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (widget.item.thumbnailUrl != null)
+                          Hero(
+                            tag: 'thumbnail_${widget.item.id}',
+                            child: _buildThumbnailImage(
+                              widget.item.thumbnailUrl!,
                             ),
-                            const Gap(2),
-                            Text(
-                              isDownloading && item.speed.isNotEmpty
-                                  ? item.speed
-                                  : (item.totalSize.isNotEmpty
-                                        ? item.totalSize
-                                        : "Unknown Size"),
-                              style: AppTypography.caption,
+                          )
+                        else
+                          const Center(
+                            child: Icon(
+                              Icons.movie_outlined,
+                              color: AppColors.textSecondary,
+                              size: 48,
                             ),
-                          ],
+                          ),
+
+                        // Status Overlay
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: StatusBadge(
+                            status: widget.item.status,
+                            error: widget.item.error,
+                          ),
                         ),
-                      ),
-                      if (item.status == DownloadStatus.failed ||
-                          item.status == DownloadStatus.canceled)
+
+                        // Progress Overlay
+                        if (isDownloading)
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            child: LinearProgressIndicator(
+                              value: widget.item.progress > 0
+                                  ? widget.item.progress
+                                  : null,
+                              backgroundColor: Colors.transparent,
+                              color: AppColors.primary,
+                              minHeight: 4,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Info Area
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.item.title ?? "Unknown Title",
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.label.copyWith(
+                            color: widget.isSelected
+                                ? AppColors.primary
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                        const Spacer(),
+                        // Meta info
                         Row(
                           children: [
-                            IconButton(
-                              onPressed: onRetry,
-                              icon: const Icon(
-                                Icons.refresh,
-                                size: 16,
-                                color: AppColors.primary,
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.item.source,
+                                    style: AppTypography.mono.copyWith(
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                  const Gap(2),
+                                  Text(
+                                    isDownloading &&
+                                            widget.item.speed.isNotEmpty
+                                        ? widget.item.speed
+                                        : (widget.item.totalSize.isNotEmpty
+                                              ? widget.item.totalSize
+                                              : "Unknown Size"),
+                                    style: AppTypography.caption,
+                                  ),
+                                ],
                               ),
                             ),
-                            IconButton(
-                              onPressed: onCancel,
-                              icon: const Icon(
-                                Icons.close,
-                                size: 16,
-                                color: AppColors.error,
+                            if (widget.item.status == DownloadStatus.failed ||
+                                widget.item.status == DownloadStatus.canceled)
+                              Row(
+                                children: [
+                                  IconButton(
+                                    onPressed: widget.onRetry,
+                                    icon: const Icon(
+                                      Icons.refresh,
+                                      size: 16,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: widget.onCancel,
+                                    icon: const Icon(
+                                      Icons.close,
+                                      size: 16,
+                                      color: AppColors.error,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
                           ],
                         ),
-                    ],
+                      ],
+                    ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -368,7 +389,7 @@ class _DownloadItemGridCard extends StatelessWidget {
   }
 }
 
-class _DownloadItemCard extends StatelessWidget {
+class _DownloadItemCard extends StatefulWidget {
   final DownloadItem item;
   final bool isSelected;
   final VoidCallback onTap;
@@ -384,132 +405,164 @@ class _DownloadItemCard extends StatelessWidget {
   });
 
   @override
+  State<_DownloadItemCard> createState() => _DownloadItemCardState();
+}
+
+class _DownloadItemCardState extends State<_DownloadItemCard> {
+  bool _isHovering = false;
+
+  @override
   Widget build(BuildContext context) {
-    final bool isDownloading = item.status == DownloadStatus.downloading;
+    final bool isDownloading = widget.item.status == DownloadStatus.downloading;
 
-    return AppCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(AppSpacing.m),
-      child: Row(
-        children: [
-          // Thumbnail / Icon
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: AppColors.border),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: item.thumbnailUrl != null
-                ? _buildThumbnailImage(item.thumbnailUrl!)
-                : const Icon(
-                    Icons.movie_outlined,
-                    color: AppColors.textSecondary,
-                    size: 24,
-                  ),
-          ),
-          const Gap(AppSpacing.m),
-
-          // Info Column
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return RepaintBoundary(
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovering = true),
+        onExit: (_) => setState(() => _isHovering = false),
+        cursor: SystemMouseCursors.click,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          transform: Matrix4.translationValues(0, _isHovering ? -2 : 0, 0),
+          child: AppCard(
+            onTap: widget.onTap,
+            padding: const EdgeInsets.all(AppSpacing.m),
+            child: Row(
               children: [
-                // Title Row
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        (item.title == null || item.title!.isEmpty)
-                            ? "Unknown Title"
-                            : item.title!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.label.copyWith(
-                          color: isSelected
-                              ? AppColors.primary
-                              : AppColors.textPrimary,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                    const Gap(AppSpacing.s),
-                    StatusBadge(status: item.status, error: item.error),
-                  ],
-                ),
-
-                const Gap(4),
-
-                // Meta Row or Progress
-                if (isDownloading ||
-                    item.status == DownloadStatus.extracting) ...[
-                  const Gap(4),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(2),
-                    child: LinearProgressIndicator(
-                      value: item.progress > 0 ? item.progress : null,
-                      backgroundColor: AppColors.background,
-                      color: AppColors.primary,
-                      minHeight: 4,
-                    ),
+                // Thumbnail / Icon
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: AppColors.border),
                   ),
-                  const Gap(6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "${(item.progress * 100).toStringAsFixed(1)}%",
-                        style: AppTypography.mono.copyWith(
-                          color: AppColors.primary,
+                  clipBehavior: Clip.antiAlias,
+                  child: widget.item.thumbnailUrl != null
+                      ? Hero(
+                          tag: 'thumbnail_${widget.item.id}',
+                          child: _buildThumbnailImage(
+                            widget.item.thumbnailUrl!,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.movie_outlined,
+                          color: AppColors.textSecondary,
+                          size: 24,
                         ),
+                ),
+                const Gap(AppSpacing.m),
+
+                // Info Column
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title Row
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              (widget.item.title == null ||
+                                      widget.item.title!.isEmpty)
+                                  ? "Unknown Title"
+                                  : widget.item.title!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.label.copyWith(
+                                color: widget.isSelected
+                                    ? AppColors.primary
+                                    : AppColors.textPrimary,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          const Gap(AppSpacing.s),
+                          StatusBadge(
+                            status: widget.item.status,
+                            error: widget.item.error,
+                          ),
+                        ],
                       ),
-                      const Gap(8),
-                      Flexible(
-                        child: Text(
+
+                      const Gap(4),
+
+                      // Meta Row or Progress
+                      if (isDownloading ||
+                          widget.item.status == DownloadStatus.extracting) ...[
+                        const Gap(4),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(2),
+                          child: LinearProgressIndicator(
+                            value: widget.item.progress > 0
+                                ? widget.item.progress
+                                : null,
+                            backgroundColor: AppColors.background,
+                            color: AppColors.primary,
+                            minHeight: 4,
+                          ),
+                        ),
+                        const Gap(6),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "${(widget.item.progress * 100).toStringAsFixed(1)}%",
+                              style: AppTypography.mono.copyWith(
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const Gap(8),
+                            Flexible(
+                              child: Text(
+                                _buildMetaString(),
+                                style: AppTypography.mono,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ] else
+                        Text(
                           _buildMetaString(),
-                          style: AppTypography.mono,
+                          style: AppTypography.bodySmall,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                      ),
                     ],
                   ),
-                ] else
-                  Text(
-                    _buildMetaString(),
-                    style: AppTypography.bodySmall,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                ),
+
+                // Action Buttons
+                if (widget.item.status == DownloadStatus.failed ||
+                    widget.item.status == DownloadStatus.canceled) ...[
+                  const Gap(AppSpacing.s),
+                  IconButton(
+                    onPressed: widget.onRetry,
+                    icon: const Icon(
+                      Icons.refresh_rounded,
+                      color: AppColors.primary,
+                    ),
+                    tooltip: "Retry Download",
+                    constraints: const BoxConstraints(),
+                    padding: const EdgeInsets.all(8),
                   ),
+                  IconButton(
+                    onPressed: widget.onCancel,
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppColors.error,
+                    ),
+                    tooltip: "Remove",
+                    constraints: const BoxConstraints(),
+                    padding: const EdgeInsets.all(8),
+                  ),
+                ],
               ],
             ),
           ),
-
-          // Action Buttons
-          if (item.status == DownloadStatus.failed ||
-              item.status == DownloadStatus.canceled) ...[
-            const Gap(AppSpacing.s),
-            IconButton(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
-              tooltip: "Retry Download",
-              constraints: const BoxConstraints(),
-              padding: const EdgeInsets.all(8),
-            ),
-            IconButton(
-              onPressed: onCancel,
-              icon: const Icon(
-                Icons.delete_outline_rounded,
-                color: AppColors.error,
-              ),
-              tooltip: "Remove",
-              constraints: const BoxConstraints(),
-              padding: const EdgeInsets.all(8),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
@@ -518,28 +571,30 @@ class _DownloadItemCard extends StatelessWidget {
     final parts = <String>[];
 
     // Source
-    parts.add(item.source);
+    parts.add(widget.item.source);
 
     // Size logic
-    if (item.totalSize.isNotEmpty) {
-      if (item.downloadedSize.isNotEmpty &&
-          item.status == DownloadStatus.downloading) {
-        parts.add("${item.downloadedSize} / ${item.totalSize}");
+    if (widget.item.totalSize.isNotEmpty) {
+      if (widget.item.downloadedSize.isNotEmpty &&
+          widget.item.status == DownloadStatus.downloading) {
+        parts.add("${widget.item.downloadedSize} / ${widget.item.totalSize}");
       } else {
-        parts.add(item.totalSize);
+        parts.add(widget.item.totalSize);
       }
-    } else if (item.downloadedSize.isNotEmpty) {
-      parts.add(item.downloadedSize);
+    } else if (widget.item.downloadedSize.isNotEmpty) {
+      parts.add(widget.item.downloadedSize);
     }
 
     // Speed
-    if (item.speed.isNotEmpty && item.status == DownloadStatus.downloading) {
-      parts.add(item.speed);
+    if (widget.item.speed.isNotEmpty &&
+        widget.item.status == DownloadStatus.downloading) {
+      parts.add(widget.item.speed);
     }
 
     // ETA
-    if (item.eta.isNotEmpty && item.status == DownloadStatus.downloading) {
-      parts.add("ETA ${item.eta}");
+    if (widget.item.eta.isNotEmpty &&
+        widget.item.status == DownloadStatus.downloading) {
+      parts.add("ETA ${widget.item.eta}");
     }
 
     return parts.join(" • ");
@@ -552,16 +607,27 @@ class _DownloadItemCard extends StatelessWidget {
         url.startsWith('http://') || url.startsWith('https://');
 
     if (isNetworkUrl) {
-      return Image.network(
-        url,
+      return CachedNetworkImage(
+        imageUrl: url,
         fit: BoxFit.cover,
         width: 48,
         height: 48,
-        errorBuilder: (_, _, _) => const Icon(
+        errorWidget: (_, __, ___) => const Icon(
           Icons.movie_outlined,
           color: AppColors.textSecondary,
           size: 24,
         ),
+        placeholder: (_, __) => Container(
+          color: AppColors.background,
+          child: const Center(
+            child: SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        ),
+        fadeInDuration: const Duration(milliseconds: 200),
       );
     }
 

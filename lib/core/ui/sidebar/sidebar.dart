@@ -14,6 +14,8 @@ import '../../../../features/downloader/presentation/providers/downloader_provid
 import '../../../../core/providers/settings_provider.dart';
 import '../../../../features/downloader/domain/enums/download_status.dart';
 
+import 'dart:ui'; // For ImageFilter
+
 class AppSidebar extends ConsumerWidget {
   const AppSidebar({super.key});
 
@@ -97,188 +99,216 @@ class AppSidebar extends ConsumerWidget {
     final String location = GoRouterState.of(context).uri.path;
     final bool isSettingsActive = location.startsWith('/settings');
 
-    return Container(
-      color: AppColors.surface,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.s,
-        vertical: AppSpacing.m,
-      ),
-      child: Column(
-        children: [
-          // Primary Action
-          AppButton.primary(
-            label: "New Download",
-            icon: Icons.add,
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => const AddDownloadDialog(),
-              );
-            },
-          ),
-
-          const Gap(AppSpacing.l),
-
-          const Gap(AppSpacing.l),
-
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _NavSection(
-                    title: "LIBRARY",
-                    children: [
-                      _NavItem(
-                        icon: Icons.inbox_rounded,
-                        label: "All Downloads",
-                        count: allDownloads.length,
-                        isLoading: allDownloadsAsync.isLoading,
-                        isSelected:
-                            statusFilter == DownloadStatusFilter.all &&
-                            sourceFilter == null,
-                        onTap: () => setStatus(DownloadStatusFilter.all),
-                      ),
-                      _NavItem(
-                        icon: Icons.downloading_rounded,
-                        label: "Active",
-                        count: countActive,
-                        isLoading: allDownloadsAsync.isLoading,
-                        isSelected: statusFilter == DownloadStatusFilter.active,
-                        onTap: () => setStatus(DownloadStatusFilter.active),
-                      ),
-                      _NavItem(
-                        icon: Icons.check_circle_outline_rounded,
-                        label: "Completed",
-                        count: countCompleted,
-                        isLoading: allDownloadsAsync.isLoading,
-                        isSelected:
-                            statusFilter == DownloadStatusFilter.completed,
-                        onTap: () => setStatus(DownloadStatusFilter.completed),
-                      ),
-                      _NavItem(
-                        icon: Icons.error_outline_rounded,
-                        label: "Failed",
-                        count: countFailed,
-                        isLoading: allDownloadsAsync.isLoading,
-                        isSelected: statusFilter == DownloadStatusFilter.failed,
-                        onTap: () => setStatus(DownloadStatusFilter.failed),
-                      ),
-                      const Gap(AppSpacing.s),
-                      _NavItem(
-                        icon: Icons.auto_awesome_motion_rounded,
-                        label: "Link Grabber",
-                        isSelected: location == '/link-grabber',
-                        onTap: () => context.go('/link-grabber'),
-                      ),
-                    ],
-                  ),
-                  const Gap(AppSpacing.m),
-                  Divider(
-                    color: AppColors.border.withValues(alpha: 0.5),
-                    height: 1,
-                  ),
-                  const Gap(AppSpacing.m),
-                  _NavSection(
-                    title: "SOURCES",
-                    children: allDownloadsAsync.isLoading
-                        ? List.generate(
-                            3,
-                            (index) => const Padding(
-                              padding: EdgeInsets.only(
-                                bottom: 8,
-                                left: 12,
-                                right: 12,
-                              ),
-                              child: AppSkeleton(
-                                height: 24,
-                                borderRadius: BorderRadius.all(
-                                  Radius.circular(6),
-                                ),
-                              ),
-                            ),
-                          )
-                        : availableSources.map((source) {
-                            // Icon mapping
-                            IconData icon = Icons.public;
-                            if (source == 'YouTube') {
-                              icon = Icons.video_library_outlined;
-                            } else if (source == 'Instagram') {
-                              icon = Icons.photo_camera_outlined;
-                            } else if (source == 'Twitter') {
-                              icon = Icons.alternate_email;
-                            } else if (source == 'Twitch') {
-                              icon = Icons.videogame_asset_outlined;
-                            } else if (source == 'Kick') {
-                              icon = Icons.bolt;
-                            }
-
-                            return _NavItem(
-                              icon: icon,
-                              label: source,
-                              count: sourceCounts[source] ?? 0,
-                              isLoading:
-                                  false, // Sources loaded implies data loaded
-                              isSelected: sourceFilter == source,
-                              onTap: () => setSource(source),
-                            );
-                          }).toList(),
-                  ),
-                  const Gap(AppSpacing.l),
-                ],
+    // Glassmorphism Container
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface.withValues(alpha: 0.6),
+            border: Border(
+              right: BorderSide(
+                color: AppColors.border.withValues(alpha: 0.3),
+                width: 1,
               ),
             ),
           ),
-
-          const Gap(AppSpacing.l),
-
-          Divider(color: AppColors.border.withValues(alpha: 0.5), height: 1),
-          const Gap(AppSpacing.m),
-
-          _ExpandableNavItem(
-            icon: Icons.settings_outlined,
-            label: "Settings",
-            initiallyExpanded: isSettingsActive,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.s,
+            vertical: AppSpacing.m,
+          ),
+          child: Column(
             children: [
-              _NavItem(
-                icon: Icons.home_filled,
-                label: "Main Page",
-                isSelected: false,
-                onTap: () => context.go('/'),
+              // Primary Action
+              AppButton.primary(
+                label: "New Download",
+                icon: Icons.add,
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => const AddDownloadDialog(),
+                  );
+                },
               ),
-              _NavItem(
-                icon: Icons.tune,
-                label: "General",
-                isSelected: location == '/settings/general',
-                onTap: () => context.push('/settings/general'),
+
+              const Gap(AppSpacing.l),
+              const Gap(AppSpacing.l),
+
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      _NavSection(
+                        title: "LIBRARY",
+                        children: [
+                          _NavItem(
+                            icon: Icons.inbox_rounded,
+                            label: "All Downloads",
+                            count: allDownloads.length,
+                            isLoading: allDownloadsAsync.isLoading,
+                            isSelected:
+                                statusFilter == DownloadStatusFilter.all &&
+                                sourceFilter == null,
+                            onTap: () => setStatus(DownloadStatusFilter.all),
+                          ),
+                          _NavItem(
+                            icon: Icons.downloading_rounded,
+                            label: "Active",
+                            count: countActive,
+                            isLoading: allDownloadsAsync.isLoading,
+                            isSelected:
+                                statusFilter == DownloadStatusFilter.active,
+                            onTap: () => setStatus(DownloadStatusFilter.active),
+                          ),
+                          _NavItem(
+                            icon: Icons.check_circle_outline_rounded,
+                            label: "Completed",
+                            count: countCompleted,
+                            isLoading: allDownloadsAsync.isLoading,
+                            isSelected:
+                                statusFilter == DownloadStatusFilter.completed,
+                            onTap: () =>
+                                setStatus(DownloadStatusFilter.completed),
+                          ),
+                          _NavItem(
+                            icon: Icons.error_outline_rounded,
+                            label: "Failed",
+                            count: countFailed,
+                            isLoading: allDownloadsAsync.isLoading,
+                            isSelected:
+                                statusFilter == DownloadStatusFilter.failed,
+                            onTap: () => setStatus(DownloadStatusFilter.failed),
+                          ),
+                          const Gap(AppSpacing.s),
+                          _NavItem(
+                            icon: Icons.bar_chart_rounded,
+                            label: "Statistics",
+                            isSelected: location == '/stats',
+                            onTap: () => context.go('/stats'),
+                          ),
+                        ],
+                      ),
+                      const Gap(AppSpacing.m),
+                      Divider(
+                        color: AppColors.border.withValues(alpha: 0.3),
+                        height: 1,
+                      ),
+                      const Gap(AppSpacing.m),
+                      _NavSection(
+                        title: "SOURCES",
+                        children: allDownloadsAsync.isLoading
+                            ? List.generate(
+                                3,
+                                (index) => const Padding(
+                                  padding: EdgeInsets.only(
+                                    bottom: 8,
+                                    left: 12,
+                                    right: 12,
+                                  ),
+                                  child: AppSkeleton(
+                                    height: 24,
+                                    borderRadius: BorderRadius.all(
+                                      Radius.circular(6),
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : availableSources.map((source) {
+                                IconData icon = Icons.public;
+                                if (source == 'YouTube') {
+                                  icon = Icons.video_library_outlined;
+                                } else if (source == 'Instagram') {
+                                  icon = Icons.photo_camera_outlined;
+                                } else if (source == 'Twitter') {
+                                  icon = Icons.alternate_email;
+                                } else if (source == 'Twitch') {
+                                  icon = Icons.videogame_asset_outlined;
+                                } else if (source == 'Kick') {
+                                  icon = Icons.bolt;
+                                }
+
+                                return _NavItem(
+                                  icon: icon,
+                                  label: source,
+                                  count: sourceCounts[source] ?? 0,
+                                  isSelected: sourceFilter == source,
+                                  onTap: () => setSource(source),
+                                );
+                              }).toList(),
+                      ),
+                      const Gap(AppSpacing.l),
+                    ],
+                  ),
+                ),
               ),
-              _NavItem(
-                icon: Icons.folder_open_outlined,
-                label: "Output",
-                isSelected: location == '/settings/output',
-                onTap: () => context.push('/settings/output'),
+
+              const Gap(AppSpacing.l),
+
+              Divider(
+                color: AppColors.border.withValues(alpha: 0.3),
+                height: 1,
               ),
-              _NavItem(
-                icon: Icons.build_circle_outlined,
-                label: "Advanced",
-                isSelected: location == '/settings/advanced',
-                onTap: () => context.push('/settings/advanced'),
+              const Gap(AppSpacing.m),
+
+              _ExpandableNavItem(
+                icon: Icons.settings_outlined,
+                label: "Settings",
+                initiallyExpanded: isSettingsActive,
+                children: [
+                  _NavItem(
+                    icon: Icons.home_filled,
+                    label: "Main Page",
+                    isSelected: false,
+                    onTap: () => context.go('/'),
+                  ),
+                  _NavItem(
+                    icon: Icons.tune,
+                    label: "General",
+                    isSelected: location == '/settings/general',
+                    onTap: () => context.push('/settings/general'),
+                  ),
+                  _NavItem(
+                    icon: Icons.folder_open_outlined,
+                    label: "Output",
+                    isSelected: location == '/settings/output',
+                    onTap: () => context.push('/settings/output'),
+                  ),
+                  _NavItem(
+                    icon: Icons.build_circle_outlined,
+                    label: "Advanced",
+                    isSelected: location == '/settings/advanced',
+                    onTap: () => context.push('/settings/advanced'),
+                  ),
+                  _NavItem(
+                    icon: Icons.speed_rounded,
+                    label: "Performance",
+                    isSelected: location == '/settings/performance',
+                    onTap: () => context.push('/settings/performance'),
+                  ),
+                  _NavItem(
+                    icon: Icons.memory_outlined,
+                    label: "System",
+                    isSelected: location == '/settings/system',
+                    onTap: () => context.push('/settings/system'),
+                  ),
+                  _NavItem(
+                    icon: Icons.palette_outlined,
+                    label: "Appearance",
+                    isSelected: location == '/settings/appearance',
+                    onTap: () => context.push('/settings/appearance'),
+                  ),
+                  _NavItem(
+                    icon: Icons.extension_outlined,
+                    label: "Plugins",
+                    isSelected: location == '/settings/plugins',
+                    onTap: () => context.push('/settings/plugins'),
+                  ),
+                ],
               ),
-              _NavItem(
-                icon: Icons.speed_rounded,
-                label: "Performance",
-                isSelected: location == '/settings/performance',
-                onTap: () => context.push('/settings/performance'),
-              ),
-              _NavItem(
-                icon: Icons.memory_outlined,
-                label: "System",
-                isSelected: location == '/settings/system',
-                onTap: () => context.push('/settings/system'),
-              ),
+              const Gap(AppSpacing.m),
             ],
           ),
-          const Gap(AppSpacing.m),
-        ],
+        ),
       ),
     );
   }
@@ -312,7 +342,7 @@ class _NavSection extends StatelessWidget {
   }
 }
 
-class _NavItem extends StatelessWidget {
+class _NavItem extends StatefulWidget {
   final IconData icon;
   final String label;
   final bool isSelected;
@@ -330,48 +360,83 @@ class _NavItem extends StatelessWidget {
   });
 
   @override
+  State<_NavItem> createState() => _NavItemState();
+}
+
+class _NavItemState extends State<_NavItem> {
+  bool _isHovering = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AppRadius.mediumBorder,
-        hoverColor: AppColors.surfaceHighlight,
-        child: Container(
+    // Determine effective colors based on state
+    final isSelected = widget.isSelected;
+
+    Color backgroundColor = Colors.transparent;
+    if (isSelected) {
+      backgroundColor = AppColors.primary.withValues(alpha: 0.15);
+    } else if (_isHovering) {
+      backgroundColor = AppColors.surfaceHighlight.withValues(alpha: 0.5);
+    }
+
+    final textColor = isSelected
+        ? AppColors.textPrimary
+        : (_isHovering ? AppColors.textPrimary : AppColors.textSecondary);
+
+    final iconColor = isSelected
+        ? AppColors.primary
+        : (_isHovering ? AppColors.textPrimary : AppColors.textSecondary);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
           height: 32,
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+          margin: const EdgeInsets.only(bottom: 2),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.surfaceHighlight : Colors.transparent,
+            color: backgroundColor,
             borderRadius: AppRadius.mediumBorder,
+            border: Border.all(
+              color: isSelected
+                  ? AppColors.primary.withValues(alpha: 0.2)
+                  : Colors.transparent,
+              width: 1,
+            ),
           ),
           child: Row(
             children: [
-              Icon(
-                icon,
-                size: 16,
-                color: isSelected
-                    ? AppColors.textPrimary
-                    : AppColors.textSecondary,
+              // Icon with slight scale animation
+              AnimatedScale(
+                scale: isSelected ? 1.1 : 1.0,
+                duration: const Duration(milliseconds: 200),
+                child: Icon(widget.icon, size: 16, color: iconColor),
               ),
               const Gap(AppSpacing.s),
+
+              // Label
               Expanded(
                 child: Text(
-                  label,
+                  widget.label,
                   style: AppTypography.bodySmall.copyWith(
-                    color: isSelected
-                        ? AppColors.textPrimary
-                        : AppColors.textSecondary,
-                    fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
+                    color: textColor,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                   ),
                 ),
               ),
-              if (isLoading)
+
+              // Count Badge or Loader
+              if (widget.isLoading)
                 const AppSkeleton(
                   width: 24,
                   height: 16,
                   borderRadius: BorderRadius.all(Radius.circular(8)),
                 )
-              else if (count != null && count! > 0)
+              else if (widget.count != null && widget.count! > 0)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 6,
@@ -379,17 +444,17 @@ class _NavItem extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? AppColors.background
+                        ? AppColors.primary
                         : AppColors.surfaceHighlight,
                     borderRadius: AppRadius.fullBorder,
                   ),
                   child: Text(
-                    count.toString(),
+                    widget.count.toString(),
                     style: AppTypography.caption.copyWith(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                       color: isSelected
-                          ? AppColors.textPrimary
+                          ? Colors.white
                           : AppColors.textSecondary,
                     ),
                   ),

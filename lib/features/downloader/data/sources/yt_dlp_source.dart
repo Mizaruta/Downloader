@@ -189,7 +189,10 @@ class YtDlpSource {
       downloadsDir.createSync(recursive: true);
     }
 
-    final filename = request.customFilename ?? '%(title)s.%(ext)s';
+    // Include %(id)s in the filename to prevent false duplicates when
+    // yt-dlp extracts the same generic title for different videos on unknown sites.
+    // The ID is unique per video (e.g. YouTube video ID, tweet status ID, etc.)
+    final filename = request.customFilename ?? '%(title)s [%(id)s].%(ext)s';
     outputPath = '$baseFolder\\$filename';
 
     args.add('-o');
@@ -285,7 +288,7 @@ class YtDlpSource {
     } else if (_requiresCookies(request.url)) {
       args.addAll([
         '--user-agent',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0  /537.36',
       ]);
       args.addAll(['--referer', request.url]);
       args.add('--no-check-certificates');

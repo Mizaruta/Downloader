@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/providers/settings_provider.dart';
 import '../../domain/entities/download_item.dart';
@@ -10,6 +11,8 @@ import '../../data/datasources/persistence_service.dart';
 import '../../data/services/library_scanner_service.dart';
 import '../../data/repositories/downloader_repository_impl.dart';
 import 'package:modern_downloader/services/service_providers.dart';
+import '../../../../core/services/download_stats_service.dart';
+import '../../../../core/plugins/plugin_manager.dart';
 
 // Data Layer Providers
 final ytDlpSourceProvider = Provider<YtDlpSource>((ref) {
@@ -38,6 +41,7 @@ final downloaderRepositoryProvider = Provider<IDownloaderRepository>((ref) {
     ref.read(galleryDlSourceProvider),
     ref.read(persistenceServiceProvider),
     ref.read(libraryScannerServiceProvider),
+    ref.read(pluginManagerProvider.notifier),
   );
 });
 
@@ -80,42 +84,124 @@ class DownloadListNotifier
     }
   }
 
+  final Map<String, DownloadItem> _pendingUpdates = {};
+  Timer? _throttleTimer;
+
+  @override
+  void dispose() {
+    _throttleTimer?.cancel();
+    super.dispose();
+  }
+
   void _listenToUpdates() {
     _repository.downloadUpdateStream.listen((item) {
       if (!mounted) return;
 
-      state.whenData((currentList) {
-        bool found = false;
-        final newState = currentList.map((e) {
-          if (e.id == item.id) {
-            found = true;
-            return item;
-          }
-          return e;
-        }).toList();
+      // Queue the update
+      _pendingUpdates[item.id] = item;
 
-        if (!found) {
-          newState.add(item);
+      // If terminal state or imperative update, flush immediately
+      if (item.status == DownloadStatus.completed ||
+          item.status == DownloadStatus.failed ||
+          item.status == DownloadStatus.canceled ||
+          item.status == DownloadStatus.duplicate ||
+          item.status == DownloadStatus.paused ||
+          item.status == DownloadStatus.queued) {
+        _flushUpdates();
+      } else {
+        // For progress updates (downloading/extracting), throttle
+        if (_throttleTimer == null || !_throttleTimer!.isActive) {
+          _throttleTimer = Timer(
+            const Duration(milliseconds: 50),
+            _flushUpdates,
+          );
         }
+      }
+    });
+  }
 
-        state = AsyncValue.data(newState);
+  void _flushUpdates() {
+    if (!mounted) return;
+    if (_pendingUpdates.isEmpty) return;
 
+    state.whenData((currentList) {
+      // Create a map of current items for valid lookups and replacement
+      final Map<String, DownloadItem> itemMap = {
+        for (var item in currentList) item.id: item,
+      };
+
+      // Apply all pending updates
+      final updates = Map<String, DownloadItem>.from(_pendingUpdates);
+      _pendingUpdates.clear();
+
+      updates.forEach((id, item) {
+        itemMap[id] = item;
+
+        // Side effects for terminal states (handled once per event effectively)
+        // Note: usage of 'item' here refers to the latest update for that ID
         if (item.status == DownloadStatus.completed ||
             item.status == DownloadStatus.failed ||
             item.status == DownloadStatus.canceled ||
             item.status == DownloadStatus.duplicate) {
-          _processQueue();
-        }
+          // Stats
+          if (item.status == DownloadStatus.completed) {
+            // Check if we already handled this completion?
+            // The stream might emit multiple 'completed' if not careful, but usually once.
+            // We rely on repository.
+            _ref
+                .read(downloadStatsProvider.notifier)
+                .recordDownload(source: item.source);
+          }
 
-        // Auto-delete duplicates after 5 seconds
-        if (item.status == DownloadStatus.duplicate) {
-          Future.delayed(const Duration(seconds: 5), () {
-            if (mounted) {
-              deleteDownload(item.id);
-            }
-          });
+          // Auto-delete duplicates
+          if (item.status == DownloadStatus.duplicate) {
+            Future.delayed(const Duration(seconds: 5), () {
+              if (mounted) {
+                deleteDownload(item.id);
+              }
+            });
+          }
         }
       });
+
+      // Convert back to list, maintaining original order if possible, or appending new ones?
+      // Re-constructing the list based on itemMap is risky if we lose order.
+      // Better: Iterate original list/keys and update. New items appended.
+
+      final List<DownloadItem> newState = [];
+      final Set<String> processedIds = {};
+
+      for (var existing in currentList) {
+        if (updates.containsKey(existing.id)) {
+          newState.add(updates[existing.id]!);
+        } else {
+          newState.add(existing);
+        }
+        processedIds.add(existing.id);
+      }
+
+      // Add new items that weren't in the list
+      updates.forEach((id, item) {
+        if (!processedIds.contains(id)) {
+          newState.add(item);
+        }
+      });
+
+      state = AsyncValue.data(newState);
+
+      // Process queue if any slot freed up
+      // We check if any of the updates were terminal
+      final hasTerminal = updates.values.any(
+        (i) =>
+            i.status == DownloadStatus.completed ||
+            i.status == DownloadStatus.failed ||
+            i.status == DownloadStatus.canceled ||
+            i.status == DownloadStatus.duplicate,
+      );
+
+      if (hasTerminal) {
+        _processQueue();
+      }
     });
   }
 

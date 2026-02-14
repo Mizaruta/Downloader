@@ -5,6 +5,12 @@ import 'package:modern_downloader/core/theme/app_colors.dart';
 import 'package:modern_downloader/core/providers/launch_provider.dart';
 import 'package:modern_downloader/features/downloader/presentation/views/dialogs/add_download_dialog.dart';
 import 'package:modern_downloader/features/downloader/presentation/providers/downloader_provider.dart';
+import 'package:modern_downloader/core/services/hotkey_service.dart';
+import 'package:modern_downloader/core/ui/media_player/media_player_view.dart';
+import 'package:modern_downloader/core/ui/media_player/media_player_provider.dart';
+import 'package:modern_downloader/core/ui/widgets/toast/custom_toast.dart';
+import 'package:modern_downloader/core/ui/widgets/toast/toast_service.dart';
+import 'package:modern_downloader/core/ui/widgets/drag_drop_overlay.dart';
 import 'sidebar/sidebar.dart';
 
 class AppShell extends ConsumerWidget {
@@ -30,29 +36,44 @@ class AppShell extends ConsumerWidget {
       }
     });
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Column(
-        children: [
-          // Windows Title Bar (Draggable)
-          const AppTitleBar(),
+    return HotkeyHandler(
+      child: DragDropOverlay(
+        child: Stack(
+          children: [
+            Scaffold(
+              backgroundColor: AppColors.background,
+              body: Column(
+                children: [
+                  // Windows Title Bar (Draggable)
+                  const AppTitleBar(),
 
-          // Main Content
-          Expanded(
-            child: Row(
-              children: [
-                // Sidebar
-                const SizedBox(width: 250, child: AppSidebar()),
+                  // Main Content
+                  Expanded(
+                    child: Row(
+                      children: [
+                        // Sidebar
+                        const SizedBox(width: 250, child: AppSidebar()),
 
-                // Vertical Divider
-                Container(width: 1, color: AppColors.border),
+                        // Vertical Divider
+                        Container(width: 1, color: AppColors.border),
 
-                // Content
-                Expanded(child: child),
-              ],
+                        // Content
+                        Expanded(child: child),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+
+            // Media Player Overlay
+            if (ref.watch(mediaPlayerProvider).isOpen)
+              const Positioned.fill(child: MediaPlayerView()),
+
+            // Toast Notifications
+            const ToastOverlay(),
+          ],
+        ),
       ),
     );
   }
@@ -72,19 +93,14 @@ class AppShell extends ConsumerWidget {
             cookieBrowser: data.cookieBrowser,
           );
 
-      // We still need context for Toast
-      try {
-        // Simple success feedback
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Extension: Download started for ${data.url}"),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppColors.primary,
-          ),
-        );
-      } catch (e) {
-        // Fallback for cold start where context might be tricky
-      }
+      // Show Toast
+      ref
+          .read(toastProvider.notifier)
+          .show(
+            title: "Download Started",
+            description: "Source: ${data.url}",
+            type: ToastType.success,
+          );
       return;
     }
 

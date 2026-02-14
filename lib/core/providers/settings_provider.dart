@@ -34,6 +34,11 @@ class AppSettings {
 
   final String cookieBrowser; // 'firefox', 'chrome', 'edge', etc.
   final bool organizeBySite; // Create subfolders per site
+  final bool autoUpdateYtDlp; // Auto-update yt-dlp on startup
+  final String locale; // 'en', 'fr', 'ar'
+  final String
+  themePreset; // 'midnight', 'ocean', 'sunset', 'forest', 'neon', 'monochrome'
+  final int customAccentColor; // ARGB int for custom accent
 
   const AppSettings({
     this.themeMode = 'system',
@@ -60,6 +65,10 @@ class AppSettings {
     this.doNotDisturb = false,
     this.cookieBrowser = 'firefox',
     this.organizeBySite = false,
+    this.autoUpdateYtDlp = true,
+    this.locale = 'en',
+    this.themePreset = 'midnight',
+    this.customAccentColor = 0xFF6366F1,
   });
 
   AppSettings copyWith({
@@ -87,6 +96,10 @@ class AppSettings {
     bool? doNotDisturb,
     String? cookieBrowser,
     bool? organizeBySite,
+    bool? autoUpdateYtDlp,
+    String? locale,
+    String? themePreset,
+    int? customAccentColor,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -115,6 +128,10 @@ class AppSettings {
       doNotDisturb: doNotDisturb ?? this.doNotDisturb,
       cookieBrowser: cookieBrowser ?? this.cookieBrowser,
       organizeBySite: organizeBySite ?? this.organizeBySite,
+      autoUpdateYtDlp: autoUpdateYtDlp ?? this.autoUpdateYtDlp,
+      locale: locale ?? this.locale,
+      themePreset: themePreset ?? this.themePreset,
+      customAccentColor: customAccentColor ?? this.customAccentColor,
     );
   }
 }
@@ -144,6 +161,10 @@ const _kApiToken = 'api_token';
 const _kDND = 'do_not_disturb';
 const _kCookieBrowser = 'cookie_browser';
 const _kOrganizeBySite = 'organize_by_site';
+const _kAutoUpdateYtDlp = 'auto_update_ytdlp';
+const _kLocale = 'locale';
+const _kThemePreset = 'theme_preset';
+const _kCustomAccentColor = 'custom_accent_color';
 
 /// Global SharedPreferences instance holder
 SharedPreferences? _prefsInstance;
@@ -193,6 +214,10 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       doNotDisturb: prefs.getBool(_kDND) ?? false,
       cookieBrowser: prefs.getString(_kCookieBrowser) ?? 'firefox',
       organizeBySite: prefs.getBool(_kOrganizeBySite) ?? false,
+      autoUpdateYtDlp: prefs.getBool(_kAutoUpdateYtDlp) ?? true,
+      locale: prefs.getString(_kLocale) ?? 'en',
+      themePreset: prefs.getString(_kThemePreset) ?? 'midnight',
+      customAccentColor: prefs.getInt(_kCustomAccentColor) ?? 0xFF6366F1,
     );
     // Ensure token is saved if it was generated
     if (prefs.getString(_kApiToken) == null) {
@@ -313,6 +338,26 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   void setOrganizeBySite(bool value) {
     state = state.copyWith(organizeBySite: value);
     prefs.setBool(_kOrganizeBySite, value);
+  }
+
+  void setAutoUpdateYtDlp(bool value) {
+    state = state.copyWith(autoUpdateYtDlp: value);
+    prefs.setBool(_kAutoUpdateYtDlp, value);
+  }
+
+  void setLocale(String value) {
+    state = state.copyWith(locale: value);
+    prefs.setString(_kLocale, value);
+  }
+
+  void setThemePreset(String value) {
+    state = state.copyWith(themePreset: value);
+    prefs.setString(_kThemePreset, value);
+  }
+
+  void setCustomAccentColor(int value) {
+    state = state.copyWith(customAccentColor: value);
+    prefs.setInt(_kCustomAccentColor, value);
   }
 }
 

@@ -8,7 +8,10 @@ import '../ui/settings/output_settings_view.dart';
 import '../ui/settings/advanced_settings_view.dart';
 import '../ui/settings/performance_settings_view.dart';
 import '../ui/settings/system_settings_view.dart';
-import '../../features/link_grabber/presentation/screens/link_grabber_screen.dart';
+import '../ui/settings/appearance_settings_view.dart';
+import '../ui/settings/plugins_settings_view.dart';
+import '../ui/settings/smart_organizer_settings_view.dart';
+import '../ui/stats/stats_view.dart';
 
 // Keys for navigation
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -26,6 +29,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
         routes: [
           GoRoute(path: '/', builder: (context, state) => const DownloadView()),
+          GoRoute(
+            path: '/stats',
+            builder: (context, state) => const StatsView(),
+          ),
           GoRoute(
             path: '/settings',
             builder: (context, state) => const GeneralSettingsView(),
@@ -51,8 +58,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const SystemSettingsView(),
           ),
           GoRoute(
-            path: '/link-grabber',
-            builder: (context, state) => const LinkGrabberScreen(),
+            path: '/settings/appearance',
+            builder: (context, state) => const AppearanceSettingsView(),
+          ),
+          GoRoute(
+            path: '/settings/plugins',
+            builder: (context, state) => const PluginsSettingsView(),
+          ),
+          GoRoute(
+            path: '/settings/smart_organizer',
+            builder: (context, state) => const SmartOrganizerSettingsView(),
           ),
         ],
       ),
