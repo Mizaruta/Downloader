@@ -10,6 +10,7 @@ import 'package:modern_downloader/features/downloader/domain/entities/download_i
 import 'package:modern_downloader/features/downloader/domain/entities/download_request.dart';
 import 'package:modern_downloader/features/downloader/domain/repositories/i_downloader_repository.dart';
 import 'package:modern_downloader/features/downloader/presentation/providers/downloader_provider.dart';
+import 'package:modern_downloader/core/ui/media_player/media_player_provider.dart';
 import 'package:modern_downloader/core/providers/settings_provider.dart'
     as settings_util;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -78,6 +79,7 @@ void main() {
   const windowChannel = MethodChannel('window_manager');
   const trayChannel = MethodChannel('tray_manager');
   const protocolChannel = MethodChannel('protocol_handler');
+  const dropChannel = MethodChannel('desktop_drop');
 
   setUpAll(() async {
     // 1. Mock MethodChannels
@@ -95,6 +97,11 @@ void main() {
         .setMockMethodCallHandler(protocolChannel, (
           MethodCall methodCall,
         ) async {
+          return null;
+        });
+
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(dropChannel, (MethodCall methodCall) async {
           return null;
         });
 
@@ -139,6 +146,12 @@ void main() {
           ),
           downloaderRepositoryProvider.overrideWithValue(
             MockDownloaderRepository(),
+          ),
+          // Override mediaPlayerProvider with a simple StateProvider
+          // to avoid instantiating the real MediaPlayerNotifier which
+          // creates a native media_kit Player.
+          mediaPlayerProvider.overrideWith(
+            (ref) => MediaPlayerNotifier(testMode: true),
           ),
         ],
         child: MaterialApp.router(routerConfig: router),

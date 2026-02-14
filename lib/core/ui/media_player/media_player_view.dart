@@ -22,7 +22,7 @@ class _MediaPlayerViewState extends ConsumerState<MediaPlayerView> {
   void initState() {
     super.initState();
     final player = ref.read(mediaPlayerProvider.notifier).player;
-    _videoController = VideoController(player);
+    _videoController = VideoController(player!);
   }
 
   @override

@@ -46,40 +46,44 @@ class MediaPlayerState {
 
 /// Manages the media player lifecycle using media_kit
 class MediaPlayerNotifier extends StateNotifier<MediaPlayerState> {
-  late final Player _player;
+  Player? _player;
 
   /// Kept as a mutable field (not in immutable state) to avoid
   /// copyWith null issues when streams fire rapidly.
   bool _isSeeking = false;
   bool get isSeeking => _isSeeking;
 
-  MediaPlayerNotifier() : super(const MediaPlayerState()) {
-    _player = Player();
-    _setupListeners();
+  /// Set [testMode] to true in unit tests to skip native Player creation.
+  MediaPlayerNotifier({bool testMode = false})
+    : super(const MediaPlayerState()) {
+    if (!testMode) {
+      _player = Player();
+      _setupListeners();
+    }
   }
 
-  Player get player => _player;
+  Player? get player => _player;
 
   void _setupListeners() {
-    _player.stream.playing.listen((playing) {
+    _player!.stream.playing.listen((playing) {
       if (mounted) state = state.copyWith(isPlaying: playing);
     });
-    _player.stream.position.listen((position) {
+    _player!.stream.position.listen((position) {
       // Don't update position from stream while user is dragging the seek bar
       if (mounted && !_isSeeking) {
         state = state.copyWith(position: position);
       }
     });
-    _player.stream.duration.listen((duration) {
+    _player!.stream.duration.listen((duration) {
       if (mounted) state = state.copyWith(duration: duration);
     });
-    _player.stream.volume.listen((volume) {
+    _player!.stream.volume.listen((volume) {
       if (mounted) state = state.copyWith(volume: volume / 100.0);
     });
-    _player.stream.rate.listen((rate) {
+    _player!.stream.rate.listen((rate) {
       if (mounted) state = state.copyWith(playbackSpeed: rate);
     });
-    _player.stream.completed.listen((completed) {
+    _player!.stream.completed.listen((completed) {
       if (mounted && completed) {
         state = state.copyWith(isPlaying: false);
       }
@@ -101,19 +105,19 @@ class MediaPlayerNotifier extends StateNotifier<MediaPlayerState> {
     state = state.copyWith(isOpen: true, currentFile: filePath);
 
     // 4. Start playback
-    await _player.open(Media(filePath));
+    await _player?.open(Media(filePath));
   }
 
   /// Close the player — exits fullscreen
   Future<void> close() async {
-    await _player.stop();
+    await _player?.stop();
     // Restore windowed mode
     await windowManager.setFullScreen(false);
     state = const MediaPlayerState();
   }
 
   void togglePlayPause() {
-    _player.playOrPause();
+    _player?.playOrPause();
   }
 
   /// Called when user starts dragging the seek bar
@@ -128,22 +132,22 @@ class MediaPlayerNotifier extends StateNotifier<MediaPlayerState> {
 
   /// Called when user releases the seek bar — actually seeks the player
   void seek(Duration position) {
-    _player.seek(position);
+    _player?.seek(position);
     _isSeeking = false;
     state = state.copyWith(position: position);
   }
 
   void setVolume(double volume) {
-    _player.setVolume(volume * 100.0);
+    _player?.setVolume(volume * 100.0);
   }
 
   void setPlaybackSpeed(double speed) {
-    _player.setRate(speed);
+    _player?.setRate(speed);
   }
 
   @override
   void dispose() {
-    _player.dispose();
+    _player?.dispose();
     super.dispose();
   }
 }
