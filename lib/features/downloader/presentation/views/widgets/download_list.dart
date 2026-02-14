@@ -612,12 +612,12 @@ class _DownloadItemCardState extends State<_DownloadItemCard> {
         fit: BoxFit.cover,
         width: 48,
         height: 48,
-        errorWidget: (_, __, ___) => const Icon(
+        errorWidget: (_, _, _) => const Icon(
           Icons.movie_outlined,
           color: AppColors.textSecondary,
           size: 24,
         ),
-        placeholder: (_, __) => Container(
+        placeholder: (_, _) => Container(
           color: AppColors.background,
           child: const Center(
             child: SizedBox(
